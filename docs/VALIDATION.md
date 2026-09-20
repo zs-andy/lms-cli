@@ -2,6 +2,8 @@
 
 Performed locally on 2026-09-20, macOS arm64.
 
+Public-release CI: [run 35520037721](https://github.com/zs-andy/polyu-lms-cli/actions/runs/35520037721) passed on macOS, Windows and Ubuntu for the initial source release. It exercises dependency installation, type checking, offline tests, dependency audit, CLI packaging and platform-specific Electron packaging. It does not authenticate against PolyU.
+
 - TypeScript build/type checking: passed.
 - Automated tests: **27 passed, 0 failed, 0 skipped**. Includes PolyU-only routing, monochrome authorization-page checks, pure-emblem icon checks, profile validation, encrypted-vault boundaries, stale-session protection, cookie scoping, read-only allowlist, parameter limits, caching/deduplication, partial failures, task correction history, stable ICS UIDs, HTTP credential/redirect guards, real upstream MCP handshakes, CLI exit codes and Electron Node-mode/native-keyring loading.
 - `npm audit` including development dependencies: **0 known vulnerabilities** at the time of this run. This is not a comprehensive security certification.
@@ -16,7 +18,7 @@ Performed locally on 2026-09-20, macOS arm64.
 
 - New authorization vault intentionally starts empty. Existing PolyU prototype credentials and study state were not read, migrated or erased. A fresh login is needed once.
 - The packaged authorization app was opened and visually checked on macOS arm64. Its own page is monochrome, PolyU-only and free of technical setup details. School SSO/MFA was not completed during verification.
-- Windows and Linux build/test workflows are supplied, but were **not executed on those operating systems here**. No Windows installer is claimed to have been built or tested.
+- Windows and Linux CI builds/offline tests passed as linked above. Their installers, OS keychain interactions and actual school SSO have **not been manually accepted on physical Windows/Linux systems**.
 - Independent `lms ask` invocation isolation was tested; a full live model-and-school query was **not run**. Use the installed Codex plugin or compatible signed-in Codex CLI for the acceptance cases.
 - Other institutions' SSO/Canvas/Blackboard compatibility was not accepted for this release; the user-facing package is intentionally limited to PolyU until separate tenant testing is complete.
 

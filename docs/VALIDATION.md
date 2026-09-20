@@ -4,6 +4,8 @@
 
 Local environment: macOS arm64, Node.js v25.7.0. Tests use synthetic profiles and isolated temporary state; no real school credentials or course records were read.
 
+Cross-platform CI: [run 35522170197](https://github.com/zs-andy/lms-cli/actions/runs/35522170197) passed on macOS, Windows and Ubuntu for multi-school source commit `6561965`. All three jobs completed dependency installation, type checking, automated tests, production dependency audit, CLI packaging, app/installer packaging and artifact upload. These artifacts are CI builds, not a published Release or real-school acceptance.
+
 - TypeScript type checking and build: passed.
 - Automated tests: **36 passed, 0 failed, 0 skipped**. New coverage includes custom school setup, Canvas-only/Blackboard-only profiles, preserving the active profile, CLI/MCP profile creation and selection, 0.2.0 PolyU profile compatibility, tenant/origin-isolated connection caches, custom-host Cookie scoping, fresh reauthorization, scoped connection checks and safe dynamic school selection.
 - Real Chromium/Electron authorization-page smoke test: passed with synthetic schools. Checked school switching, configured-platform filtering, correct login arguments, locked profile, empty state, hostile labels rendered as text and viewport fit. The rendered page was visually inspected; no school SSO was attempted.

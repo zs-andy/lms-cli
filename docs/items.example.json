@@ -1,0 +1,12 @@
+[
+  {
+    "id": "canvas:example-course:announcement-42:homework-1",
+    "title": "Example homework",
+    "kind": "assignment",
+    "course": "EXAMPLE101",
+    "due": "2026-10-02T18:00:00+08:00",
+    "status": "open",
+    "needsConfirmation": false,
+    "sources": [{ "url": "https://school.example.edu/courses/123/discussion_topics/42", "quote": "Homework 1 is due on 2 October 2026 at 18:00 Hong Kong time." }]
+  }
+]

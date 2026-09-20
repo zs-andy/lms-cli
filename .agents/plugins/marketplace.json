@@ -1,0 +1,20 @@
+{
+  "name": "polyu-lms",
+  "interface": {
+    "displayName": "Polyu Lms"
+  },
+  "plugins": [
+    {
+      "name": "lms-cli",
+      "source": {
+        "source": "local",
+        "path": "./plugins/lms-cli"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

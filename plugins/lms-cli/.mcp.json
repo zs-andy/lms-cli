@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "lms": { "command": "lms", "args": ["mcp"] }
+  }
+}

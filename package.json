@@ -1,0 +1,57 @@
+{
+  "name": "canvas-blackboard-cli",
+  "version": "0.2.0",
+  "description": "Read-only PolyU Canvas and Blackboard CLI with MCP and native sign-in",
+  "type": "module",
+  "license": "MIT",
+  "author": "LMS CLI contributors",
+  "homepage": "https://github.com/zs-andy/polyu-lms-cli#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/zs-andy/polyu-lms-cli.git" },
+  "bugs": { "url": "https://github.com/zs-andy/polyu-lms-cli/issues" },
+  "engines": { "node": ">=22.16.0" },
+  "bin": { "lms": "bin/lms.js" },
+  "main": "dist/src/auth/app.js",
+  "files": ["bin", "dist", "plugins/lms-cli", "docs", "vendor/*/LICENSE", "README.md", "PRIVACY.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md", "LICENSE"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --import tsx --test test/*.test.ts",
+    "start": "node bin/lms.js",
+    "auth:app": "electron .",
+    "pack:cli": "npm run build && npm pack",
+    "pack:app": "npm run build && electron-builder --publish never",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "@napi-rs/keyring": "2.1.0",
+    "ajv": "8.20.0",
+    "commander": "14.0.3",
+    "ical-generator": "10.0.0",
+    "proper-lockfile": "4.1.2",
+    "tough-cookie": "5.1.2",
+    "unpdf": "1.8.1",
+    "zod": "3.25.76"
+  },
+  "optionalDependencies": { "electron": "44.4.3" },
+  "devDependencies": {
+    "@types/node": "24.5.2",
+    "@types/proper-lockfile": "4.1.4",
+    "electron-builder": "26.15.3",
+    "tsx": "4.23.15",
+    "typescript": "5.9.2"
+  },
+  "build": {
+    "appId": "org.lmscli.authorization",
+    "productName": "LMS Authorization",
+    "icon": "assets/polyu-icon.png",
+    "directories": { "output": "release" },
+    "files": ["dist/**/*", "package.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "vendor/*/LICENSE"],
+    "asarUnpack": ["**/*.node"],
+    "npmRebuild": false,
+    "mac": { "category": "public.app-category.education", "identity": null, "icon": "assets/polyu-icon.png", "target": ["dmg", "zip"] },
+    "win": { "icon": "assets/polyu-icon.png", "target": ["nsis"], "artifactName": "LMS-Authorization-${version}-${arch}.${ext}" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
+    "linux": { "icon": "assets/polyu-icon.png", "target": ["AppImage"], "category": "Education" }
+  }
+}

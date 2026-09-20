@@ -1,0 +1,30 @@
+{
+  "name": "lms-cli",
+  "version": "0.2.0",
+  "description": "PolyU Canvas and Blackboard access in Codex, focused on courses, notices, homework and schedule changes.",
+  "author": {
+    "name": "zs-andy and contributors",
+    "url": "https://github.com/zs-andy"
+  },
+  "homepage": "https://github.com/zs-andy/polyu-lms-cli",
+  "repository": "https://github.com/zs-andy/polyu-lms-cli",
+  "license": "MIT",
+  "keywords": ["polyu", "canvas", "blackboard", "education", "mcp"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "PolyU 学习助手",
+    "shortDescription": "在 Codex 里查看 PolyU 课程、通知、作业和安排",
+    "longDescription": "社区维护的 PolyU 学习助手，非学校官方产品。安装配套 CLI 后，在 Codex 中查询课程、老师通知、作业、考试与调课，按需保存待办和导出日历。当前为预览版。",
+    "developerName": "zs-andy and contributors",
+    "websiteURL": "https://github.com/zs-andy/polyu-lms-cli",
+    "privacyPolicyURL": "https://github.com/zs-andy/polyu-lms-cli/blob/main/PRIVACY.md",
+    "category": "Productivity",
+    "brandColor": "#000000",
+    "capabilities": ["Interactive", "Read"],
+    "composerIcon": "./assets/polyu-icon.png",
+    "logo": "./assets/polyu-icon.png",
+    "logoDark": "./assets/polyu-icon.png",
+    "defaultPrompt": ["整理本周安排，考虑老师通知里的作业和调课。", "两平台最近有哪些重要通知？", "帮我查找指定课程的评分反馈和相关资料。"]
+  },
+  "mcpServers": "./.mcp.json"
+}

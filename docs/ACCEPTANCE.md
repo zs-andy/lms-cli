@@ -5,10 +5,12 @@ Use test accounts/content allowed by the institution. Do not paste credentials i
 ## Install and authorization
 
 - Install the npm tarball in a clean directory on macOS and Windows; `lms --help`, `lms doctor` work without the source checkout.
-- Configure PolyU, open `lms auth login`, finish actual SSO/MFA and verify `lms auth status --live` reports both reads successful. No manual Cookie/secret input. Closing/cancelling login must not erase previously working sessions.
+- Configure a custom school with `lms init --id ... --label ... --timezone ... --canvas ...` and/or `--blackboard ...`. Also check the optional `lms init --preset polyu` shortcut. Finish actual SSO/MFA with `lms --profile <id> auth login`, then run `lms --profile <id> check`. No manual Cookie/secret input. Closing/cancelling login must not erase previously working sessions.
 - Leave one MCP connection open, reauthorize, then query again in that same connection. No restart required. Locally log out one platform with `auth logout --platform ... --yes`: the other remains available; the logged-out one cannot return cached private results.
 
 ## General capability, not a timetable-only demo
+
+Run these checks separately for each allowed institution, platform and account. `lms check` only probes identity/course listing; announcements, assignments, grades and files need these independent checks. A URL preset is not a verified-school badge.
 
 1. “列出两平台的课程。”
 2. “某门课程老师最近通知了什么？附原文链接。”
@@ -26,6 +28,14 @@ Check results against known source pages, not just a fluent answer. Course IDs a
 - A cancelled class is cancelled, not retained as mandatory; alternative/group-specific lab sessions are flagged until the user's group is known.
 - “Week 5” without a validated term-week mapping is not fabricated. A date without a time is not guessed as 23:59. Timezones are correct in display and ICS import.
 - Notifications older than the fast lookback/per-course limit and unread attachments are disclosed as coverage limits. Ask a narrower follow-up or explicitly request wider history when necessary.
+
+## Multiple schools and upgrade compatibility
+
+- Add a second school and confirm the first remains active; use `profiles use` to switch the default, or `--profile` for one command. An ambiguous school name must be clarified before reading private data.
+- Check Canvas-only, Blackboard-only and dual-platform profiles. The authorization UI offers only configured platforms and displays the selected school's origin. A CLI/MCP-initiated window cannot change the requested account.
+- Use separate profile IDs for two accounts at the same school. Verify courses, caches, saved tasks, downloads and logout effects do not cross accounts. Each profile uses its own school timezone.
+- Re-run authorization with a previously stored but expired session. It must not report success before a fresh live validation completes. A session for another school/platform cannot finish the job.
+- Upgrade a synthetic 0.2.0 configuration without changing its active profile, erasing saved state or migrating unrelated browser cookies. Remove the old npm package before installing the renamed one, and do not enable old and new marketplace plugins together.
 
 ## Failure and security behavior
 

@@ -1,4 +1,4 @@
 interface:
-  display_name: "PolyU 学习助手"
-  short_description: "查询 PolyU 课程、通知、作业和安排"
-  default_prompt: "使用 $lms-query 帮我整理 PolyU 本周安排。"
+  display_name: "lms-cli"
+  short_description: "支持多学校的 Canvas / Blackboard 课程、通知与作业查询"
+  default_prompt: "使用 $lms-query 查询当前学校本周的安排，结合老师通知并附上来源。"

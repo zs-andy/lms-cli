@@ -1,13 +1,14 @@
 {
-  "name": "canvas-blackboard-cli",
-  "version": "0.2.0",
-  "description": "Read-only PolyU Canvas and Blackboard CLI with MCP and native sign-in",
+  "name": "lms-cli",
+  "version": "0.3.0",
+  "description": "Multi-school Canvas / Blackboard learning assistant with a read-only CLI, MCP server and local sign-in",
   "type": "module",
   "license": "MIT",
   "author": "LMS CLI contributors",
-  "homepage": "https://github.com/zs-andy/polyu-lms-cli#readme",
-  "repository": { "type": "git", "url": "git+https://github.com/zs-andy/polyu-lms-cli.git" },
-  "bugs": { "url": "https://github.com/zs-andy/polyu-lms-cli/issues" },
+  "homepage": "https://github.com/zs-andy/lms-cli#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/zs-andy/lms-cli.git" },
+  "bugs": { "url": "https://github.com/zs-andy/lms-cli/issues" },
+  "keywords": ["lms", "canvas", "blackboard", "education", "mcp", "multi-school"],
   "engines": { "node": ">=22.16.0" },
   "bin": { "lms": "bin/lms.js" },
   "main": "dist/src/auth/app.js",
@@ -43,15 +44,15 @@
   },
   "build": {
     "appId": "org.lmscli.authorization",
-    "productName": "LMS Authorization",
-    "icon": "assets/polyu-icon.png",
+    "productName": "lms-cli",
+    "icon": "assets/lms-icon.png",
     "directories": { "output": "release" },
     "files": ["dist/**/*", "package.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "vendor/*/LICENSE"],
     "asarUnpack": ["**/*.node"],
     "npmRebuild": false,
-    "mac": { "category": "public.app-category.education", "identity": null, "icon": "assets/polyu-icon.png", "target": ["dmg", "zip"] },
-    "win": { "icon": "assets/polyu-icon.png", "target": ["nsis"], "artifactName": "LMS-Authorization-${version}-${arch}.${ext}" },
+    "mac": { "category": "public.app-category.education", "identity": null, "icon": "assets/lms-icon.png", "target": ["dmg", "zip"] },
+    "win": { "icon": "assets/lms-icon.png", "target": ["nsis"], "artifactName": "lms-cli-${version}-${arch}.${ext}" },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
-    "linux": { "icon": "assets/polyu-icon.png", "target": ["AppImage"], "category": "Education" }
+    "linux": { "icon": "assets/lms-icon.png", "target": ["AppImage"], "category": "Education" }
   }
 }

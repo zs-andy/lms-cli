@@ -10,7 +10,7 @@ let controller: BrowserWindow; let busy = false; let message = '准备登录'; l
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : undefined; };
 const fromCLI = process.argv.includes('--from-cli');
 const fromProfile = arg('--profile');
-const push = async () => { const c = await loadConfig(); const s = { profiles: c.profiles, active: fromProfile ?? c.active, busy, message }; if (controller && !controller.isDestroyed()) controller.webContents.send('lms:update', s); return s; };
+const push = async () => { const c = await loadConfig(); const s = { profiles: c.profiles, active: fromProfile ?? c.active, lockedProfile: fromProfile, busy, message }; if (controller && !controller.isDestroyed()) controller.webContents.send('lms:update', s); return s; };
 
 function harden(win: BrowserWindow) {
   win.webContents.on('will-navigate', (event, url) => { if (!allowedNavigation(url)) event.preventDefault(); });
@@ -24,7 +24,7 @@ function harden(win: BrowserWindow) {
 }
 async function authorize(p: Profile, platform: PlatformType, ephemeral: ElectronSession, signal: AbortSignal) {
   await new Promise<void>((resolve, reject) => {
-    const win = new BrowserWindow({ show: true, width: 1040, height: 780, title: '登录 PolyU', webPreferences: { session: ephemeral, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
+    const win = new BrowserWindow({ show: true, width: 1040, height: 780, title: `lms-cli · ${p.label}`, webPreferences: { session: ephemeral, nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } });
     win.center();
     win.show();
     win.focus();
@@ -53,11 +53,13 @@ async function authorize(p: Profile, platform: PlatformType, ephemeral: Electron
       finally { validating = false; }
     };
     const timer = setInterval(() => { void check().catch(() => {}); }, 1200);
-    void win.loadURL(`${p[platform]}${platform === 'blackboard' ? '/ultra/institution-page' : '/'}`).catch(() => { message = '无法加载学校登录页面。请检查网络，或关闭窗口后重试。'; void push(); });
+    // Let the institution's root route to its configured SSO/landing page.
+    void win.loadURL(`${p[platform]}/`).catch(() => { message = '无法加载学校登录页面。请检查网络，或关闭窗口后重试。'; void push(); });
   });
 }
 async function start(profileId: string, selection: string) {
   if (busy) return;
+  if (fromProfile && profileId !== fromProfile) throw new Error('Profile does not match the requested authorization');
   const p = await getProfile(profileId); const selected = selection === 'all' ? platforms(p) : [Platform.parse(selection)];
   if (selected.some(s => !p[s])) throw new Error('Platform missing');
   busy = true; abort = new AbortController();
@@ -66,7 +68,7 @@ async function start(profileId: string, selection: string) {
   ephemeral.setPermissionCheckHandler(() => false);
   ephemeral.on('will-download', event => event.preventDefault());
   try {
-    for (const platform of selected) { message = '请完成 PolyU 登录。'; await push(); await authorize(p, platform, ephemeral, abort.signal); }
+    for (const platform of selected) { message = `请完成 ${p.label} 的 ${platform === 'canvas' ? 'Canvas' : 'Blackboard'} 登录。`; await push(); await authorize(p, platform, ephemeral, abort.signal); }
     message = '登录成功，可以返回 Codex。';
     if (fromCLI) { app.exit(0); return; }
   } catch { message = '登录未完成，请重试。'; }
@@ -81,7 +83,7 @@ app.on('window-all-closed', () => { abort?.abort(); app.exit(busy ? 2 : 0); });
 // exists (the process remains alive but appears to flicker or do nothing).
 async function boot() {
   await app.whenReady();
-  controller = new BrowserWindow({ show: true, width: 480, height: 620, title: '连接 PolyU', webPreferences: { preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)), nodeIntegration: false, contextIsolation: true, sandbox: true } });
+  controller = new BrowserWindow({ show: true, width: 500, height: 740, title: 'lms-cli', webPreferences: { preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)), nodeIntegration: false, contextIsolation: true, sandbox: true } });
   controller.center();
   controller.show();
   controller.focus();
@@ -97,7 +99,7 @@ async function boot() {
   controller.show();
   controller.focus();
   controller.moveTop();
-  if (fromProfile) void start(fromProfile, arg('--platform') ?? 'all').catch(() => { message = '暂时无法连接 PolyU，请返回 Codex 重试。'; void push(); });
+  if (fromProfile) void start(fromProfile, arg('--platform') ?? 'all').catch(() => { message = '暂时无法连接所选学校，请返回助手检查学校配置。'; void push(); });
 }
 
 void boot().catch(() => { app.exit(1); });

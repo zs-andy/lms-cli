@@ -41,3 +41,26 @@ test('failed startup is retryable and batch respects its size bound', async () =
   const b = new Backend(connect, async () => 'g'); assert.equal((await b.call(p, 'canvas_list_courses')).ok, false); assert.equal((await b.call(p, 'canvas_list_courses')).ok, true);
   await assert.rejects(b.batch(p, Array.from({ length: 9 }, () => ({ tool: 'canvas_list_courses' })))); await b.close();
 });
+test('connections and cached results are isolated by school/account and origin', async () => {
+  let connects = 0;
+  const b = new Backend(async school => { connects++; return { tools, call: async () => ({ content: [{ type: 'text', text: school.canvas! }] }), close: async () => {} }; }, async () => 'same-generation');
+  const second = ProfileSchema.parse({ id: 'second', label: 'Second', timezone: 'Europe/London', canvas: 'https://other.instructure.com' });
+  const first = await b.call(p, 'canvas_list_courses');
+  const other = await b.call(second, 'canvas_list_courses');
+  assert.equal(first.origin, p.canvas); assert.equal(other.origin, second.canvas); assert.equal(other.cached, false);
+  assert.equal(other.timezone, 'Europe/London'); assert.equal(connects, 2);
+  assert.equal((await b.call(p, 'canvas_list_courses')).cached, true);
+  const moved = await b.call({ ...second, canvas: 'https://moved.school.edu' }, 'canvas_list_courses');
+  assert.equal(connects, 3); assert.equal((moved.data!.content[0] as { text: string }).text, 'https://moved.school.edu');
+  await b.close();
+});
+test('connectivity checks report partial failures, redact bodies and respect configured platforms', async () => {
+  const identities: Tool[] = [...tools, { name: 'canvas_get_profile', inputSchema: { type: 'object', properties: {} } }, { name: 'bb_whoami', inputSchema: { type: 'object', properties: {} } }, { name: 'bb_list_courses', inputSchema: { type: 'object', properties: {} } }];
+  const b = new Backend(async (_p, platform) => ({ tools: identities, call: async () => platform === 'canvas' ? { content: [{ type: 'text', text: 'PRIVATE-COURSE-BODY' }] } : { isError: true, content: [{ type: 'text', text: '403 forbidden' }] }, close: async () => {} }), async () => 'g');
+  const result = await b.check(p); assert.equal(result.ok, false); assert.equal(result.partial, true); assert.equal(result.checks.length, 4);
+  assert.equal(result.checks[0]!.ok, true); assert.equal(result.checks[2]!.error?.code, 'FORBIDDEN'); assert(!JSON.stringify(result).includes('PRIVATE-COURSE-BODY'));
+  const single = { ...p, blackboard: undefined };
+  assert.equal((await b.check(single)).checks.length, 2); assert.equal((await b.check(single)).ok, true);
+  await assert.rejects(b.check(single, 'blackboard'));
+  await b.close();
+});

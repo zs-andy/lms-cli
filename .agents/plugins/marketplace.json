@@ -1,7 +1,7 @@
 {
-  "name": "polyu-lms",
+  "name": "lms-cli",
   "interface": {
-    "displayName": "Polyu Lms"
+    "displayName": "lms-cli"
   },
   "plugins": [
     {

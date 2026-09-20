@@ -8,6 +8,7 @@ import { getProfile, platforms, type Platform, type Profile } from './config.js'
 import { vault } from './vault.js';
 import { isAllowed, platformFor } from './policy.js';
 import { LmsError, publicError } from './errors.js';
+import { VERSION } from './version.js';
 
 export interface Connection { tools: Tool[]; call(name: string, args: Record<string, unknown>): Promise<CallToolResult>; close(): Promise<void>; }
 export type Connect = (p: Profile, platform: Platform) => Promise<Connection>;
@@ -19,7 +20,7 @@ export const connectUpstream: Connect = async (p, platform) => {
   for (const [key, value] of Object.entries(process.env)) if (value !== undefined && !/^(CANVAS_|BLACKBOARD_)/.test(key)) env[key] = value;
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1';
   const transport = new StdioClientTransport({ command: process.execPath, args: [workerPath, platform, p.id], env, stderr: 'pipe' });
-  const client = new Client({ name: 'lms-cli', version: '0.2.0' });
+  const client = new Client({ name: 'lms-cli', version: VERSION });
   transport.stderr?.on('data', () => {}); // Upstream diagnostic bodies are intentionally not logged.
   try {
     await client.connect(transport, { timeout: 15_000 });
@@ -41,7 +42,7 @@ export class Backend {
   constructor(private connect: Connect = connectUpstream, private generation: (p: Profile, s: Platform) => Promise<string | null> = (p, s) => vault.generation(p, s)) {}
   private async connection(p: Profile, platform: Platform) {
     if (!p[platform]) throw new LmsError('NOT_CONFIGURED', `${platform} is not configured in profile ${p.id}.`);
-    const key = `${p.id}:${platform}`; const generation = await this.generation(p, platform);
+    const key = JSON.stringify([p.id, platform, p[platform]]); const generation = await this.generation(p, platform);
     const old = this.connections.get(key);
     if (old?.generation === generation) return old.connection;
     // Publish the replacement promise before awaiting old-process shutdown. Concurrent
@@ -117,6 +118,15 @@ export class Backend {
     if (p.canvas) calls.push({ tool: 'canvas_list_courses' }, { tool: 'canvas_list_announcements', args: { start_date: new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10), max_chars: 20000 } }, { tool: 'canvas_list_planner', args: { days_ahead: days, days_back: 0 } }, { tool: 'canvas_list_calendar_events', args: { start_date: new Date().toISOString().slice(0, 10), end_date: new Date(Date.now() + days * 86400_000).toISOString().slice(0, 10) } });
     if (p.blackboard) calls.push({ tool: 'bb_list_courses' }, { tool: 'bb_announcements', args: { limit: 20, fullText: true, maxCourses: 15 } }, { tool: 'bb_todo', args: { days } }, { tool: 'bb_calendar', args: { days } });
     return { ...(await this.batch(p, calls, fresh)), scope: { days, canvasAnnouncementLookbackDays: 90, blackboardAnnouncementsPerCourse: 20, blackboardMaxCourses: 15, attachmentsRead: false }, note: 'Fast evidence collection, not a generated timetable. Announcements can override API due dates. Follow relevant links, verify applicability, and report coverage gaps.' };
+  }
+  async check(p: Profile, platform?: Platform) {
+    const selected = platform ? [platform] : platforms(p);
+    if (selected.some(s => !p[s])) throw new LmsError('NOT_CONFIGURED', 'That platform is not configured for this profile.');
+    const checks = selected.flatMap(s => s === 'canvas' ? ['canvas_get_profile', 'canvas_list_courses'] : ['bb_whoami', 'bb_list_courses']);
+    const result = await this.batch(p, checks.map(tool => ({ tool })), true);
+    return { ok: result.ok, partial: result.partial, profile: p.id, label: p.label, timezone: p.timezone,
+      checks: result.results.map(({ platform, tool, origin, ok, fetchedAt, error }) => ({ platform, tool, origin, ok, fetchedAt, ...(error ? { error } : {}) })),
+      note: 'Live identity and course-list probes only; no private response bodies are included. Success does not verify announcements, assignments, grades, files, all courses or other schools. Blackboard depends on Learn Ultra internal APIs.' };
   }
   async close() { await Promise.all([...this.connections.values()].map(e => e.connection.then(c => c.close()).catch(() => {}))); this.connections.clear(); this.cache.clear(); }
 }

@@ -1,17 +1,28 @@
 import { randomBytes } from 'node:crypto';
 
-/**
- * Small, user-facing PolyU sign-in window. Keep this page deliberately free of
- * implementation terms: the separate school sign-in window handles the actual
- * credentials, while this page only starts the connection and reports status.
- */
+/** School names and origins are rendered as text, never HTML or script source. */
 export function authorizationHTML() {
   const nonce = randomBytes(18).toString('base64');
-  return `<!doctype html><html lang="zh-Hans"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'"><title>连接 PolyU</title><style>
-*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(420px,100%);margin:0 auto;padding:48px 28px}header{margin-bottom:34px}.mark{font-size:13px;font-weight:700;letter-spacing:.18em;margin-bottom:26px}h1{font-size:30px;line-height:1.15;letter-spacing:-.04em;margin:0 0 14px}p{line-height:1.6;margin:0}.card{border:1px solid #000;padding:22px;margin-top:28px}label{display:block;font-size:13px;font-weight:600;margin-bottom:8px}select,button{font:inherit;width:100%;height:44px;border:1px solid #000;border-radius:0;background:#fff;color:#000;padding:0 12px}button{background:#000;color:#fff;font-weight:600;cursor:pointer;margin-top:16px}button:disabled{background:#fff;color:#000;cursor:wait}.status{border-top:1px solid #000;margin-top:18px;padding-top:14px;min-height:42px}.hint{font-size:12px;margin-top:24px}</style></head><body><main><header><div class="mark">POLYU</div><h1>连接 PolyU</h1><p>登录后，Codex 可以帮你查看 Canvas 和 Blackboard 的课程、通知、作业与安排。</p></header><section class="card"><label for="platform">登录平台</label><select id="platform"><option value="all">Canvas 和 Blackboard</option><option value="canvas">Canvas</option><option value="blackboard">Blackboard</option></select><button id="login">开始登录</button><p id="status" class="status" role="status">准备就绪</p></section><p class="hint">登录完成后，返回 Codex 继续提问即可。</p></main><script nonce="${nonce}">
-const platform=document.getElementById('platform'),status=document.getElementById('status'),login=document.getElementById('login');
-function render(s){const ready=s.profiles.some(p=>p.id==='polyu');status.textContent=ready?(s.message||'准备就绪'):'请先在 Codex 中连接 PolyU';login.disabled=!!s.busy||!ready;}
-window.lms.onState(render);window.lms.state().then(render);
-login.onclick=async()=>{try{status.textContent='正在打开登录页面…';login.disabled=true;await window.lms.login('polyu',platform.value)}catch{status.textContent='无法开始登录，请重试。';login.disabled=false}};
+  return `<!doctype html><html lang="zh-Hans"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'"><title>lms-cli</title><style>
+*{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(460px,100%);margin:0 auto;padding:36px 28px}header{margin-bottom:26px}h1{font-size:32px;line-height:1.15;letter-spacing:-.04em;margin:0 0 14px}p{line-height:1.6;margin:0}.card{border:1px solid #000;padding:22px;margin-top:24px}label{display:block;font-size:13px;font-weight:600;margin:16px 0 8px}label:first-child{margin-top:0}select,button{font:inherit;width:100%;height:44px;border:1px solid #000;border-radius:0;background:#fff;color:#000;padding:0 12px}button{background:#000;color:#fff;font-weight:600;cursor:pointer;margin-top:16px}button:disabled{background:#fff;color:#000;cursor:default}.status{border-top:1px solid #000;margin-top:18px;padding-top:14px;min-height:42px}.hint{font-size:12px;margin-top:20px}.origins{font-size:12px;overflow-wrap:anywhere;white-space:pre-line;margin-top:10px}code{font-size:12px}</style></head><body><main><header><h1>lms-cli</h1><p>支持多学校的 Canvas / Blackboard 学习助手</p></header><section class="card"><label for="school">学校 / 账号</label><select id="school" aria-label="学校 / 账号"></select><label for="platform">登录平台</label><select id="platform"></select><p id="origins" class="origins"></p><button id="login" disabled>开始登录</button><p id="status" class="status" role="status" aria-live="polite">正在读取学校配置…</p></section><p class="hint">请先核对学校网址，再在弹出的学校页面中完成登录。是否可用取决于学校登录政策及平台版本。</p><p id="setup" class="hint" hidden>请在助手中添加学校，或运行 <code>lms init --help</code>。已有配置可运行 <code>lms profiles list</code> 查看。</p></main><script nonce="${nonce}">
+const school=document.getElementById('school'),platform=document.getElementById('platform'),origins=document.getElementById('origins'),status=document.getElementById('status'),login=document.getElementById('login'),setup=document.getElementById('setup');
+let latest={profiles:[],busy:false};
+function option(value,label){const node=document.createElement('option');node.value=value;node.textContent=label;return node;}
+function render(s){
+  latest=s;
+  const selected=s.lockedProfile||(s.profiles.some(p=>p.id===school.value)?school.value:s.active)||s.profiles[0]?.id||'';
+  school.replaceChildren(...s.profiles.map(p=>option(p.id,p.label+' ('+p.id+')')));school.value=selected;
+  const p=s.profiles.find(p=>p.id===school.value),available=p?['canvas','blackboard'].filter(k=>p[k]):[];
+  const previous=platform.value;
+  platform.replaceChildren(...(available.length>1?[option('all','所有已配置平台')]:[]),...available.map(k=>option(k,k==='canvas'?'Canvas':'Blackboard')));
+  platform.value=available.includes(previous)?previous:(available.length>1?'all':available[0]||'');
+  origins.textContent=p?available.map(k=>(k==='canvas'?'Canvas: ':'Blackboard: ')+p[k]).join('\\n'):'';
+  school.disabled=!!s.busy||!!s.lockedProfile||!p;platform.disabled=!!s.busy||!p;
+  login.disabled=!!s.busy||!p;setup.hidden=!!p;
+  status.textContent=p?(s.message||'准备就绪'):'请先添加学校 / 账号配置';
+}
+school.onchange=()=>{platform.value='';render({...latest,message:'准备就绪'});};
+window.lms.onState(render);window.lms.state().then(render).catch(()=>{status.textContent='无法读取学校配置，请返回助手检查。';setup.hidden=false;});
+login.onclick=async()=>{try{render({...latest,busy:true,message:'正在打开学校登录页面…'});await window.lms.login(school.value,platform.value)}catch{render({...latest,busy:false,message:'无法开始登录，请重试。'})}};
 </script></body></html>`;
 }

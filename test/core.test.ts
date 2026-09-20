@@ -4,7 +4,8 @@ import { mkdtemp, readdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { addProfile, getProfile, loadConfig, polyu, ProfileSchema, Origin, useProfile } from '../src/config.js';
+import { addProfile, getProfile, initProfile, loadConfig, polyu, ProfileSchema, Origin, useProfile } from '../src/config.js';
+import { isFreshAuthorization } from '../src/auth/launch.js';
 import { Vault, type KeyProvider } from '../src/vault.js';
 import { cookieHeader, allowedNavigation } from '../src/auth/cookies.js';
 import { isAllowed, platformFor } from '../src/policy.js';
@@ -38,6 +39,33 @@ test('vault encrypts secrets and authenticates school, slot and generation', asy
   assert.equal(await vault.read({ ...p, canvas: 'https://different.example.edu' }, 'canvas'), null);
   const file = join(home, files[0]!); const envelope = JSON.parse(await readFile(file, 'utf8')); envelope.generation = 'tampered'; await writeFile(file, JSON.stringify(envelope));
   await assert.rejects(vault.read(p, 'canvas'), (e: LmsError) => e.code === 'VAULT_INVALID');
+});
+test('custom setup supports either platform, validates timezone and preserves the active account', async () => {
+  const current = (await loadConfig()).active;
+  const custom = await initProfile({ id: 'bb-only', label: ' BlackBoard School ', timezone: 'America/New_York', blackboard: 'https://learn.school.edu/' });
+  assert.equal(custom.canvas, undefined); assert.equal(custom.blackboard, 'https://learn.school.edu'); assert.equal(custom.label, 'BlackBoard School');
+  assert.equal((await loadConfig()).active, current);
+  assert.deepEqual(await initProfile({ preset: 'polyu' }), p);
+  for (const invalid of [{}, { id: 'bad', label: 'Missing platform', timezone: 'UTC' }, { ...p, id: 'bad', timezone: 'Mars/Test' }, { ...p, label: '  ' }]) await assert.rejects(initProfile(invalid), (e: LmsError) => e.code === 'BAD_INPUT');
+  await assert.rejects(initProfile({ preset: 'polyu', canvas: 'https://other.edu' }), (e: LmsError) => e.code === 'BAD_INPUT');
+  await assert.rejects(initProfile({ preset: 'unknown' }), (e: LmsError) => e.code === 'BAD_INPUT');
+  await assert.rejects(getProfile('missing'), (e: LmsError) => e.code === 'PROFILE_NOT_FOUND' && !e.message.includes('PolyU'));
+});
+test('reauthorization cannot finish using old or another platform\'s saved credentials', () => {
+  const started = '2026-09-21T00:00:00Z';
+  const old = { platform: 'canvas' as const, authorized: true, validatedAt: '2026-09-20T23:59:59Z', liveChecked: false };
+  assert.equal(isFreshAuthorization([old], ['canvas'], started), false);
+  const fresh = { ...old, validatedAt: started };
+  assert.equal(isFreshAuthorization([fresh], ['canvas'], started), true);
+  assert.equal(isFreshAuthorization([fresh], ['blackboard'], started), false);
+  assert.equal(isFreshAuthorization([fresh], ['canvas', 'blackboard'], started), false);
+  assert.equal(isFreshAuthorization([{ ...fresh, authorized: false }], ['canvas'], started), false);
+});
+test('cookie extraction works for custom schools without sharing another tenant session', () => {
+  const cookie = { name: 'canvas_session', value: 'synthetic', domain: 'alpha.instructure.com', secure: true };
+  assert.equal(cookieHeader('canvas', 'https://alpha.instructure.com', [cookie]), 'canvas_session=synthetic');
+  assert.equal(cookieHeader('canvas', 'https://beta.instructure.com', [cookie]), null);
+  assert.equal(cookieHeader('blackboard', 'https://learn.school.edu', [{ ...cookie, name: 'JSESSIONID', domain: 'learn.school.edu' }]), 'JSESSIONID=synthetic');
 });
 test('old workers cannot replace new login or restore logged-out credentials', async () => {
   const first = await vault.write(p, 'canvas', { n: 1 }); const second = await vault.write(p, 'canvas', { n: 2 });

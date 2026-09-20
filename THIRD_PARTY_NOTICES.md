@@ -1,10 +1,10 @@
 # Reused open-source components
 
-This application is not affiliated with Instructure, Anthology, PolyU, or OpenAI.
+This application is not affiliated with Instructure, Anthology, OpenAI or any institution, including PolyU.
 
 ## Names and brand assets
 
-The PolyU name and emblem, including the image assets in `assets/` and `plugins/lms-cli/assets/`, remain the property of their respective rights holders. They are not licensed under this project's MIT license. Their inclusion identifies the intended institution; it does not imply sponsorship, approval, or permission to reuse these marks. The same applies to the Canvas, Blackboard and Codex names. Distributors must independently confirm any required trademark or brand-use permissions.
+The neutral lms-cli book/terminal icon (`assets/lms-icon.svg` and its rendered PNG copies) is an original project asset under the MIT license. Version 0.3.0 no longer distributes the PolyU emblem as its app/plugin icon. School names, including the optional PolyU preset, and the Canvas, Blackboard and Codex names remain the property of their respective rights holders. Their mention does not imply sponsorship, approval or permission to reuse third-party marks. Historical releases retain their original notices.
 
 ## Vendored LMS connectors (MIT)
 

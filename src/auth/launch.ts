@@ -41,18 +41,25 @@ function authCommand(profile: Profile, platform: Platform | undefined) {
   const args = ['--profile', profile.id, '--platform', platform ?? 'all', '--from-cli'];
   const configured = process.env.LMS_AUTH_APP;
   const macCandidates = [
-    join(homedir(), 'Applications', 'LMS Authorization.app'),
-    '/Applications/LMS Authorization.app',
+    join(homedir(), 'Applications', 'lms-cli.app'),
+    '/Applications/lms-cli.app',
   ];
   const winCandidates = process.platform === 'win32' ? [
-    join(process.env.LOCALAPPDATA ?? '', 'Programs', 'LMS Authorization', 'LMS Authorization.exe'),
-    join(process.env.LOCALAPPDATA ?? '', 'LMS Authorization', 'LMS Authorization.exe'),
+    join(process.env.LOCALAPPDATA ?? '', 'Programs', 'lms-cli', 'lms-cli.exe'),
+    join(process.env.LOCALAPPDATA ?? '', 'lms-cli', 'lms-cli.exe'),
   ] : [];
   const unixCandidates = process.platform === 'linux' ? [
-    join(homedir(), '.local', 'share', 'LMS Authorization', 'lms-authorization'),
-    '/usr/local/bin/lms-authorization',
-    '/usr/bin/lms-authorization',
+    join(homedir(), '.local', 'share', 'lms-cli', 'lms-cli'),
+    '/usr/local/bin/lms-cli',
+    '/usr/bin/lms-cli',
   ] : [];
+  // Prefer the matching bundled runtime over an older installed PolyU-only app.
+  if (!configured) {
+    try {
+      const electron = require('electron');
+      if (typeof electron === 'string' && electron) return { command: electron, args: [fileURLToPath(new URL('../../../', import.meta.url)), ...args] };
+    } catch {}
+  }
   const candidate = configured || [...macCandidates, ...winCandidates, ...unixCandidates].find(existsSync);
 
   // macOS must go through `open -na`: launching the inner executable directly
@@ -62,18 +69,7 @@ function authCommand(profile: Profile, platform: Platform | undefined) {
   }
   if (candidate) return { command: candidate, args };
 
-  try {
-    const electron = require('electron');
-    if (typeof electron !== 'string' || !electron) throw new Error();
-    const packageRoot = fileURLToPath(new URL('../../../', import.meta.url));
-    return { command: electron, args: [packageRoot, ...args] };
-  } catch {
-    throw new LmsError(
-      'AUTH_APP_MISSING',
-      'The cross-platform authorization app is not installed.',
-      'Install the LMS Authorization app or set LMS_AUTH_APP to its executable path.',
-    );
-  }
+  throw new LmsError('AUTH_APP_MISSING', 'The lms-cli authorization app is not installed.', 'Reinstall lms-cli with optional dependencies or install the current lms-cli app. An old PolyU-only authorization app is not a supported fallback.');
 }
 
 export function startLogin(p: Profile, platform?: Platform) {
@@ -84,6 +80,7 @@ export function startLogin(p: Profile, platform?: Platform) {
   const selected = platform ? [platform] : platforms(p);
   if (!selected.length) throw new LmsError('NOT_CONFIGURED', 'No LMS platform is configured for this profile.');
   const launch = authCommand(p, platform);
+  const startedAt = new Date().toISOString();
   let child: ChildProcess;
   try {
     const env = { ...process.env };
@@ -94,7 +91,7 @@ export function startLogin(p: Profile, platform?: Platform) {
   }
 
   const id = randomUUID();
-  const job: Job = { id, profile: p.id, platforms: selected, state: 'running', startedAt: new Date().toISOString(), child, done: Promise.resolve() };
+  const job: Job = { id, profile: p.id, platforms: selected, state: 'running', startedAt, child, done: Promise.resolve() };
   job.done = new Promise<void>(resolve => {
     child.once('error', () => { job.state = 'cancelled'; resolve(); });
     // `open -na` exits as soon as it hands off to LaunchServices. Its exit is
@@ -113,10 +110,14 @@ export function startLogin(p: Profile, platform?: Platform) {
   };
 }
 
+export function isFreshAuthorization(platforms: Awaited<ReturnType<typeof authStatus>>['platforms'], requested: Platform[], startedAt: string) {
+  return requested.every(platform => platforms.some(s => s.platform === platform && s.authorized && s.validatedAt !== null && Date.parse(s.validatedAt) >= Date.parse(startedAt)));
+}
+
 async function authorizedFor(job: Job) {
   const p = await getProfile(job.profile);
   const status = await authStatus(p);
-  return job.platforms.every(platform => status.platforms.find(s => s.platform === platform)?.authorized);
+  return isFreshAuthorization(status.platforms, job.platforms, job.startedAt);
 }
 
 async function waitForAuthorization(job: Job, timeoutMs: number) {

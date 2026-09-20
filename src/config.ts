@@ -16,13 +16,14 @@ export const Origin = z.string().transform((s, ctx) => {
     return u.origin;
   } catch { ctx.addIssue({ code: 'custom', message: 'Use an HTTPS origin only, with no path, query, or credentials.' }); return z.NEVER; }
 });
-export const ProfileSchema = z.object({
+export const ProfileFields = {
   id: ProfileId,
-  label: z.string().min(1).max(100),
+  label: z.string().trim().min(1).max(100),
   timezone: z.string().refine(s => { try { new Intl.DateTimeFormat('en', { timeZone: s }); return true; } catch { return false; } }, 'Use an IANA timezone'),
   canvas: Origin.optional(),
   blackboard: Origin.optional(),
-}).strict().refine(p => p.canvas || p.blackboard, 'Configure at least one platform');
+};
+export const ProfileSchema = z.object(ProfileFields).strict().refine(p => p.canvas || p.blackboard, 'Configure at least one platform');
 export type Profile = z.infer<typeof ProfileSchema>;
 const ConfigSchema = z.object({ version: z.literal(1), active: ProfileId.optional(), profiles: z.array(ProfileSchema) });
 type Config = z.infer<typeof ConfigSchema>;
@@ -72,8 +73,22 @@ export async function useProfile(id: string) {
 }
 export async function getProfile(id?: string): Promise<Profile> {
   const c = await loadConfig(); const p = c.profiles.find(p => p.id === (id ?? c.active));
-  if (!p) throw new LmsError('PROFILE_NOT_FOUND', 'PolyU is not configured.', 'Run lms init --preset polyu.');
+  if (!p) throw new LmsError('PROFILE_NOT_FOUND', 'School/account profile not found.', 'Run lms profiles list, lms init --help or lms profiles add --help. PolyU users can use lms init --preset polyu.');
   return p;
 }
 export function platforms(p: Profile): Platform[] { return (['canvas', 'blackboard'] as const).filter(k => p[k]); }
 export const polyu = { id: 'polyu', label: 'The Hong Kong Polytechnic University', timezone: 'Asia/Hong_Kong', canvas: 'https://canvas.polyu.edu.hk', blackboard: 'https://learn.polyu.edu.hk' };
+
+export const presets = [{ name: 'polyu', profile: polyu, compatibility: 'Preset URLs only; school SSO and individual features still require live verification.' }];
+
+export async function initProfile(options: { preset?: string; id?: string; label?: string; timezone?: string; canvas?: string; blackboard?: string }) {
+  if (!options.preset) { const { preset: _preset, ...fields } = options; return addProfile(fields); }
+  if (Object.entries(options).some(([key, value]) => key !== 'preset' && value !== undefined)) {
+    throw new LmsError('BAD_INPUT', 'Choose either a preset or custom profile fields, not both.');
+  }
+  const preset = presets.find(p => p.name === options.preset);
+  if (!preset) throw new LmsError('BAD_INPUT', 'Unknown preset. Run lms presets, or configure a custom school with lms init --help.');
+  const existing = (await loadConfig()).profiles.find(p => p.id === preset.profile.id);
+  if (existing && Object.entries(preset.profile).every(([key, value]) => existing[key as keyof Profile] === value)) return existing;
+  return addProfile(preset.profile);
+}

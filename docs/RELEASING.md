@@ -10,8 +10,8 @@
 
 ## 发布前检查
 
-1. 核对 `package.json`、CLI/MCP 版本和插件 manifest 版本一致。不要把个人安装的 `+codex.*` 缓存后缀提交到发布版。
-2. 更新 README、隐私说明、验证记录及第三方许可证。校徽和第三方标识不属于本项目 MIT 授权。
+1. 核对 `package.json`、`package-lock.json`、`src/version.ts` 和插件 manifest 版本一致。不要把个人安装的 `+codex.*` 缓存后缀提交到发布版。仓库、包、App 与插件展示名称均为 `lms-cli`；CLI 命令仍为 `lms`。
+2. 更新 README、隐私说明、验证记录及第三方许可证。项目使用原创中性图标，不使用校徽作品牌；第三方标识不属于本项目 MIT 授权。修改 `assets/lms-icon.svg` 后可运行 `npx electron scripts/render-icon.mjs` 同步两个 PNG。
 3. 在干净目录运行安装、类型检查、测试和依赖审计。
 4. 扫描 Git 暂存文件及 `npm pack` 清单，确认没有密钥、账号、下载文件、私人路径或旧备份。
 5. 在目标系统验证安装、启动、取消及重试。实际 SSO/MFA 和课程查询按 [ACCEPTANCE.md](ACCEPTANCE.md) 验收。
@@ -37,11 +37,13 @@ npm run pack:app
 先为发布提交创建版本标签，再从 GitHub 标签安装：
 
 ```sh
-codex plugin marketplace add zs-andy/polyu-lms-cli --ref v0.2.0
-codex plugin add lms-cli@polyu-lms
+codex plugin marketplace add zs-andy/lms-cli --ref <已发布标签>
+codex plugin add lms-cli@lms-cli
 codex plugin list
 ```
 
 随后在新任务里核对插件说明和 MCP 工具。插件依赖另外安装的 `lms` 命令；市场安装不会自动安装 Node.js 或 CLI。
 
 未来版本需要同时更新 README 中的下载文件名和 `--ref` 标签。不要覆盖已有 Release 附件或重写已公开标签，修复应发布新版本。
+
+0.3.0 开发源码可从 `main` 安装，但不能在标签和附件尚未创建时宣称 Release 已发布。历史 0.2.0 的 `canvas-blackboard-cli` tarball、`polyu-lms` 市场及旧品牌说明保持历史语义；升级时移除旧包/旧插件，再安装新版。npm 包名已更新不等于获得公共 npm 同名包的发布权限，本项目仍以仓库源码和 GitHub Release tarball 分发。

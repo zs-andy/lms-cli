@@ -1,0 +1,62 @@
+name: Attach verified installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing preview release tag
+        required: true
+        type: string
+      build_run_id:
+        description: Successful Verify and build run from this repository
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify source and draft release
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          run_info=$(gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN_ID")
+          jq -e '.status == "completed" and .conclusion == "success" and .path == ".github/workflows/ci.yml"' <<< "$run_info"
+          source_commit=$(jq -r '.head_sha' <<< "$run_info")
+          [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]]
+          git rev-parse --verify "refs/tags/$RELEASE_TAG"
+          git diff --exit-code "$source_commit" "$RELEASE_TAG" -- src vendor assets plugins package.json package-lock.json bin tsconfig.json scripts .github/workflows/ci.yml
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft')" = true
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.build_run_id }}
+          pattern: lms-cli-*
+          path: artifacts
+      - name: Attach installers and checksums without replacing existing assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir publish
+          while IFS= read -r -d '' file; do
+            name=$(basename "$file")
+            safe_name=${name// /-}
+            test ! -e "publish/$safe_name"
+            cp "$file" "publish/$safe_name"
+          done < <(find artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' \) -print0)
+          (cd publish && sha256sum -- *.dmg *.exe *.AppImage > INSTALLER-SHA256SUMS.txt)
+          gh release upload "$RELEASE_TAG" publish/*

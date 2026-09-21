@@ -80,7 +80,8 @@ try {
   $lmsCurrent = Join-Path $lmsRoot 'current'
   if ((Test-Path -LiteralPath $lmsCurrent) -and (Get-Content -LiteralPath $lmsCurrent -Raw).Trim() -ne $Version) { Copy-Item -LiteralPath $lmsCurrent -Destination (Join-Path $lmsRoot 'previous') -Force }
   $lmsPointer = Join-Path $lmsStage 'current'; [IO.File]::WriteAllText($lmsPointer, "$Version`n")
-  if (Test-Path -LiteralPath $lmsCurrent) { [IO.File]::Replace($lmsPointer, $lmsCurrent, $null) } else { [IO.File]::Move($lmsPointer, $lmsCurrent) }
+  # Windows PowerShell 5.1 can bind $null to an empty backup filename; use an explicit staging path.
+  if (Test-Path -LiteralPath $lmsCurrent) { [IO.File]::Replace($lmsPointer, $lmsCurrent, (Join-Path $lmsStage 'current.backup')) } else { [IO.File]::Move($lmsPointer, $lmsCurrent) }
   if (!$NoPath) {
     $lmsUserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
     if (($lmsUserPath -split ';') -notcontains $lmsBin) {

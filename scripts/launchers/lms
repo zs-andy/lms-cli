@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+lms_source=$0
+while [ -L "$lms_source" ]; do
+  lms_parent=$(CDPATH= cd -- "$(dirname -- "$lms_source")" && pwd -P)
+  lms_link=$(readlink "$lms_source")
+  case "$lms_link" in /*) lms_source=$lms_link ;; *) lms_source=$lms_parent/$lms_link ;; esac
+done
+LMS_INSTALL_ROOT=$(CDPATH= cd -- "$(dirname -- "$lms_source")/.." && pwd -P)
+export LMS_INSTALL_ROOT
+IFS= read -r lms_version < "$LMS_INSTALL_ROOT/current"
+case "$lms_version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) printf '%s\n' 'Invalid lms installation pointer. Re-run the installer.' >&2; exit 1 ;; esac
+case "$lms_version" in *[!a-zA-Z0-9.-]*|*..*|*-*) printf '%s\n' 'Unsafe lms installation pointer.' >&2; exit 1 ;; esac
+exec "$LMS_INSTALL_ROOT/versions/$lms_version/runtime/node" "$LMS_INSTALL_ROOT/versions/$lms_version/app/bin/lms.js" "$@"

@@ -9,6 +9,9 @@ import { vault } from './vault.js';
 import { isAllowed, platformFor } from './policy.js';
 import { LmsError, publicError } from './errors.js';
 import { VERSION } from './version.js';
+import { getPlatform, isPlatformEnvironment, toolPlatform } from './platforms/registry.js';
+import { planOverview } from './platforms/overview.js';
+import type { ReadCall } from './platforms/types.js';
 
 export interface Connection { tools: Tool[]; call(name: string, args: Record<string, unknown>): Promise<CallToolResult>; close(): Promise<void>; }
 export type Connect = (p: Profile, platform: Platform) => Promise<Connection>;
@@ -17,7 +20,7 @@ const workerPath = fileURLToPath(new URL('./worker.js', import.meta.url));
 
 export const connectUpstream: Connect = async (p, platform) => {
   const env: Record<string, string> = {};
-  for (const [key, value] of Object.entries(process.env)) if (value !== undefined && !/^(CANVAS_|BLACKBOARD_)/.test(key)) env[key] = value;
+  for (const [key, value] of Object.entries(process.env)) if (value !== undefined && !isPlatformEnvironment(key)) env[key] = value;
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1';
   const transport = new StdioClientTransport({ command: process.execPath, args: [workerPath, platform, p.id], env, stderr: 'pipe' });
   const client = new Client({ name: 'lms-cli', version: VERSION });
@@ -25,13 +28,13 @@ export const connectUpstream: Connect = async (p, platform) => {
   try {
     await client.connect(transport, { timeout: 15_000 });
     const { tools } = await client.listTools();
-    return { tools: tools.filter(t => isAllowed(t.name)), call: (name, args) => client.callTool({ name, arguments: args }, undefined, { timeout: 45_000 }) as Promise<CallToolResult>, close: () => client.close() };
+    return { tools: tools.filter(t => isAllowed(t.name, platform)), call: (name, args) => client.callTool({ name, arguments: args }, undefined, { timeout: 45_000 }) as Promise<CallToolResult>, close: () => client.close() };
   } catch { await client.close().catch(() => {}); throw new LmsError('CONNECTOR_UNAVAILABLE', `${platform} connector did not start.`, 'Run lms doctor. Reinstall the package if its built files are missing.'); }
 };
 
 type Entry = { generation: string | null; connection: Promise<Connection> };
 export interface ReadResult {
-  ok: boolean; profile: string; platform: Platform; tool: string; origin: string; timezone: string;
+  ok: boolean; profile: string; platform: Platform | null; tool: string; origin: string; timezone: string;
   fetchedAt: string; cached: boolean; elapsedMs: number; coverage: string; data?: CallToolResult;
   error?: ReturnType<typeof publicError>;
 }
@@ -58,7 +61,7 @@ export class Backend {
   }
   async catalog(p: Profile, options: { platform?: Platform; query?: string; name?: string } = {}) {
     const selected = options.name ? [platformFor(options.name)] : options.platform ? [options.platform] : platforms(p);
-    const results = await Promise.all(selected.map(async s => ({ platform: s, tools: (await this.connection(p, s)).tools })));
+    const results = await Promise.all(selected.map(async s => ({ platform: s, tools: (await this.connection(p, s)).tools.filter(tool => isAllowed(tool.name, s)) })));
     const found = results.flatMap(({ platform, tools }) => tools.filter(t => (!options.name || t.name === options.name) && (!options.query || `${t.name} ${t.description}`.toLowerCase().includes(options.query.toLowerCase()))).map(t => ({ platform, name: t.name, description: t.description, ...(options.name ? { inputSchema: t.inputSchema } : {}) })));
     if (options.name && !found.length) throw new LmsError('TOOL_NOT_FOUND', 'Tool unavailable in this connector version.');
     return found;
@@ -101,32 +104,35 @@ export class Backend {
       try { return await read; } finally { this.inFlight.delete(key); }
     } catch (e) { return { ...base, elapsedMs: Date.now() - started, error: publicError(e) }; }
   }
-  async batch(p: Profile, calls: Array<{ tool: string; args?: Record<string, unknown> }>, fresh = false) {
+  async batch(p: Profile, calls: ReadCall[], fresh = false) {
     if (!calls.length || calls.length > 8) throw new LmsError('BAD_INPUT', 'Batch must contain 1–8 calls.');
+    return this.readMany(p, calls, fresh);
+  }
+  private async readMany(p: Profile, calls: ReadCall[], fresh: boolean) {
     const results: ReadResult[] = new Array(calls.length); let index = 0;
     await Promise.all(Array.from({ length: Math.min(3, calls.length) }, async () => {
       while (index < calls.length) { const i = index++; const c = calls[i]!;
         try { results[i] = await this.call(p, c.tool, c.args ?? {}, { fresh }); }
-        catch (e) { results[i] = { ok: false, profile: p.id, platform: c.tool.startsWith('canvas_') ? 'canvas' : 'blackboard', tool: c.tool, origin: '', timezone: p.timezone, fetchedAt: new Date().toISOString(), cached: false, elapsedMs: 0, coverage: 'Not read', error: publicError(e) }; }
+        catch (e) { results[i] = { ok: false, profile: p.id, platform: toolPlatform(c.tool) ?? null, tool: c.tool, origin: '', timezone: p.timezone, fetchedAt: new Date().toISOString(), cached: false, elapsedMs: 0, coverage: 'Not read', error: publicError(e) }; }
       }
     }));
     return { ok: results.every(r => r.ok), partial: results.some(r => !r.ok), results };
   }
   async overview(p: Profile, days = 14, fresh = false) {
     if (!Number.isInteger(days) || days < 1 || days > 90) throw new LmsError('BAD_INPUT', 'days must be between 1 and 90.');
-    const calls: Array<{ tool: string; args?: Record<string, unknown> }> = [];
-    if (p.canvas) calls.push({ tool: 'canvas_list_courses' }, { tool: 'canvas_list_announcements', args: { start_date: new Date(Date.now() - 90 * 86400_000).toISOString().slice(0, 10), max_chars: 20000 } }, { tool: 'canvas_list_planner', args: { days_ahead: days, days_back: 0 } }, { tool: 'canvas_list_calendar_events', args: { start_date: new Date().toISOString().slice(0, 10), end_date: new Date(Date.now() + days * 86400_000).toISOString().slice(0, 10) } });
-    if (p.blackboard) calls.push({ tool: 'bb_list_courses' }, { tool: 'bb_announcements', args: { limit: 20, fullText: true, maxCourses: 15 } }, { tool: 'bb_todo', args: { days } }, { tool: 'bb_calendar', args: { days } });
-    return { ...(await this.batch(p, calls, fresh)), scope: { days, canvasAnnouncementLookbackDays: 90, blackboardAnnouncementsPerCourse: 20, blackboardMaxCourses: 15, attachmentsRead: false }, note: 'Fast evidence collection, not a generated timetable. Announcements can override API due dates. Follow relevant links, verify applicability, and report coverage gaps.' };
+    const plan = planOverview(platforms(p).map(getPlatform), days);
+    const result = await this.readMany(p, plan.calls, fresh);
+    return { ...result, ok: result.ok && !plan.unsupportedPlatforms.length, partial: result.partial || !!plan.unsupportedPlatforms.length, scope: plan.scope, unsupportedPlatforms: plan.unsupportedPlatforms, note: 'Fast evidence collection, not a generated timetable. Announcements can override API due dates. Follow relevant links, verify applicability, and report coverage gaps.' };
   }
   async check(p: Profile, platform?: Platform) {
     const selected = platform ? [platform] : platforms(p);
     if (selected.some(s => !p[s])) throw new LmsError('NOT_CONFIGURED', 'That platform is not configured for this profile.');
-    const checks = selected.flatMap(s => s === 'canvas' ? ['canvas_get_profile', 'canvas_list_courses'] : ['bb_whoami', 'bb_list_courses']);
-    const result = await this.batch(p, checks.map(tool => ({ tool })), true);
+    const checks = selected.flatMap(s => { const { probes } = getPlatform(s); return [probes.identity, probes.courses]; });
+    const result = await this.readMany(p, checks, true);
     return { ok: result.ok, partial: result.partial, profile: p.id, label: p.label, timezone: p.timezone,
-      checks: result.results.map(({ platform, tool, origin, ok, fetchedAt, error }) => ({ platform, tool, origin, ok, fetchedAt, ...(error ? { error } : {}) })),
-      note: 'Live identity and course-list probes only; no private response bodies are included. Success does not verify announcements, assignments, grades, files, all courses or other schools. Blackboard depends on Learn Ultra internal APIs.' };
+      checks: result.results.map(({ tool, origin, ok, fetchedAt, error }) => ({ platform: platformFor(tool), tool, origin, ok, fetchedAt, ...(error ? { error } : {}) })),
+      limitations: Object.fromEntries(selected.map(s => [s, getPlatform(s).limitations])),
+      note: 'Live identity and course-list probes only; no private response bodies are included. Success does not verify announcements, assignments, grades, files, all courses or other schools. See platform limitations.' };
   }
   async close() { await Promise.all([...this.connections.values()].map(e => e.connection.then(c => c.close()).catch(() => {}))); this.connections.clear(); this.cache.clear(); }
 }

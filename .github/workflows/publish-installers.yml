@@ -39,7 +39,8 @@ jobs:
           source_commit=$(jq -r '.head_sha' <<< "$run_info")
           [[ "$source_commit" =~ ^[0-9a-f]{40}$ ]]
           git rev-parse --verify "refs/tags/$RELEASE_TAG"
-          git diff --exit-code "$source_commit" "$RELEASE_TAG" -- src vendor assets plugins package.json package-lock.json bin tsconfig.json scripts .github/workflows/ci.yml
+          git diff --exit-code "$source_commit" "$RELEASE_TAG" -- src vendor assets plugins package.json package-lock.json bin tsconfig.json scripts install.sh install.ps1 .github/workflows/ci.yml README.md PRIVACY.md SECURITY.md LICENSE THIRD_PARTY_NOTICES.md docs
+          test "$(git show "$RELEASE_TAG:package.json" | jq -r '.version')" = "${RELEASE_TAG#v}"
           test "$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft')" = true
       - uses: actions/download-artifact@v4
         with:
@@ -57,6 +58,7 @@ jobs:
             safe_name=${name// /-}
             test ! -e "publish/$safe_name"
             cp "$file" "publish/$safe_name"
-          done < <(find artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' \) -print0)
-          (cd publish && sha256sum -- *.dmg *.exe *.AppImage > INSTALLER-SHA256SUMS.txt)
+          done < <(find artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name 'lms-cli-*.tar.gz' \) -print0)
+          test -n "$(find publish -name 'lms-cli-*.tar.gz' -print -quit)"
+          (cd publish && shopt -s nullglob && assets=(*.dmg *.exe *.AppImage *.tar.gz) && sha256sum -- "${assets[@]}" > SHA256SUMS.txt)
           gh release upload "$RELEASE_TAG" publish/*

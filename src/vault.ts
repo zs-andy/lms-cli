@@ -3,8 +3,10 @@ import { readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { atomicWrite, ensureHome, locked, stateHome, type Platform, type Profile } from './config.js';
 import { LmsError } from './errors.js';
+import { platformIds } from './platforms/registry.js';
+import type { StoredCredential } from './platforms/types.js';
 
-export interface Secret { kind: 'cookie' | 'token' | 'blackboard-session'; value: string; userAgent?: string; validatedAt: string; }
+export type Secret = StoredCredential;
 export interface KeyProvider { get(): Promise<Buffer | null>; set(key: Buffer): Promise<void>; }
 class SystemKey implements KeyProvider {
   private async entry() {
@@ -29,7 +31,12 @@ export class Vault {
       this.key = key; return key;
     } catch { throw new LmsError('KEYCHAIN_UNAVAILABLE', 'System credential storage is unavailable or locked.', 'Unlock Keychain / Windows Credential Manager / Linux Secret Service. No plaintext fallback is used.'); }
   }
-  private name(p: Profile, slot: string) { return createHash('sha256').update(`${p.id}\0${slot}\0${p.canvas ?? ''}\0${p.blackboard ?? ''}`).digest('hex'); }
+  private name(p: Profile, slot: string) {
+    // Preserve the exact v0.2/v0.3 key for existing profiles, even after registering new platforms.
+    const legacy = `${p.id}\0${slot}\0${p.canvas ?? ''}\0${p.blackboard ?? ''}`;
+    const additional = platformIds.filter(id => id !== 'canvas' && id !== 'blackboard' && p[id]).sort().map(id => [id, p[id]]);
+    return createHash('sha256').update(legacy + (additional.length ? `\0${JSON.stringify(additional)}` : '')).digest('hex');
+  }
   private path(p: Profile, slot: string) { return join(stateHome(), `${this.name(p, slot)}.vault`); }
   async generation(p: Profile, slot: string): Promise<string | null> {
     try { return (JSON.parse(await readFile(this.path(p, slot), 'utf8')) as Envelope).generation; }

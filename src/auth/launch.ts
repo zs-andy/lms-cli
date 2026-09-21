@@ -1,5 +1,4 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -8,8 +7,8 @@ import { join } from 'node:path';
 import { getProfile, type Platform, type Profile, platforms } from '../config.js';
 import { vault, type Secret } from '../vault.js';
 import { LmsError } from '../errors.js';
+import { installedElectron } from './runtime.js';
 
-const require = createRequire(import.meta.url);
 const LOGIN_TIMEOUT_MS = 15 * 60_000;
 type Job = {
   id: string;
@@ -56,7 +55,7 @@ function authCommand(profile: Profile, platform: Platform | undefined) {
   // Prefer the matching bundled runtime over an older installed PolyU-only app.
   if (!configured) {
     try {
-      const electron = require('electron');
+      const electron = installedElectron();
       if (typeof electron === 'string' && electron) return { command: electron, args: [fileURLToPath(new URL('../../../', import.meta.url)), ...args] };
     } catch {}
   }
@@ -65,7 +64,7 @@ function authCommand(profile: Profile, platform: Platform | undefined) {
   // macOS must go through `open -na`: launching the inner executable directly
   // can leave an invisible app process and does not reliably present a window.
   if (process.platform === 'darwin' && candidate?.endsWith('.app')) {
-    return { command: '/usr/bin/open', args: ['-na', candidate, '--args', ...args] };
+    return { command: '/usr/bin/open', args: ['-W', '-na', candidate, '--args', ...args] };
   }
   if (candidate) return { command: candidate, args };
 
@@ -94,10 +93,11 @@ export function startLogin(p: Profile, platform?: Platform) {
   const job: Job = { id, profile: p.id, platforms: selected, state: 'running', startedAt, child, done: Promise.resolve() };
   job.done = new Promise<void>(resolve => {
     child.once('error', () => { job.state = 'cancelled'; resolve(); });
-    // `open -na` exits as soon as it hands off to LaunchServices. Its exit is
-    // deliberately not treated as authorization completion; the vault is the
-    // source of truth and is polled by waitLogin.
-    child.once('close', () => {});
+    // `open -W` waits for the app just like a directly spawned Electron process.
+    // Closing the login window must not leave the CLI waiting for 15 minutes.
+    child.once('close', () => {
+      void authorizedFor(job).then(valid => { job.state = valid ? 'finished' : 'cancelled'; resolve(); }, () => { job.state = 'cancelled'; resolve(); });
+    });
   });
   jobs.set(id, job);
   for (const [key, old] of jobs) if (jobs.size > 10 && old.state !== 'running') jobs.delete(key);
@@ -127,6 +127,7 @@ async function waitForAuthorization(job: Job, timeoutMs: number) {
       job.state = 'finished';
       break;
     }
+    if (Date.now() - Date.parse(job.startedAt) >= LOGIN_TIMEOUT_MS) { job.state = 'cancelled'; break; }
     if (Date.now() >= deadline) break;
     await new Promise(resolve => setTimeout(resolve, Math.min(500, Math.max(50, deadline - Date.now()))));
   }

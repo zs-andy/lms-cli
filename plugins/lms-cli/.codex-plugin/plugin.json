@@ -1,7 +1,7 @@
 {
   "name": "lms-cli",
-  "version": "0.3.0",
-  "description": "Multi-school Canvas / Blackboard learning assistant for courses, announcements, assignments, feedback and schedules.",
+  "version": "0.4.0",
+  "description": "Multi-school Canvas / Blackboard CLI and Agent tools for school discovery, courses, announcements, assignments, feedback and schedules.",
   "author": {
     "name": "zs-andy and contributors",
     "url": "https://github.com/zs-andy"
@@ -13,8 +13,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "lms-cli",
-    "shortDescription": "支持多学校的 Canvas / Blackboard 学习助手",
-    "longDescription": "社区维护的多学校学习助手，非学校官方产品。添加学校网址和时区后，查询 Canvas / Blackboard 的课程、通知、作业与反馈，按需保存待办、导出日历。可分别管理多个学校和账号，保留 PolyU 预设。兼容性取决于学校登录政策及平台版本；当前为预览版。",
+    "shortDescription": "多学校 Canvas / Blackboard CLI 与 Agent 工具",
+    "longDescription": "社区维护的多学校 CLI 与 Agent 工具。搜索并确认学校网址和时区后，查询 Canvas / Blackboard 的课程、通知、作业与反馈，按需保存待办、导出日历。支持独立账号、终端配置及更新提示；仅必要的学校授权使用窗口。非学校官方产品，具体功能取决于学校政策、接口权限和平台版本。",
     "developerName": "zs-andy and contributors",
     "websiteURL": "https://github.com/zs-andy/lms-cli",
     "privacyPolicyURL": "https://github.com/zs-andy/lms-cli/blob/main/PRIVACY.md",

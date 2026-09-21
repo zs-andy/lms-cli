@@ -5,11 +5,13 @@ import { getProfile, loadConfig, Platform, platforms, type Profile, type Platfor
 import { cookieHeader, allowedNavigation } from './cookies.js';
 import { validateInWorker } from './validate.js';
 import { authorizationHTML } from './ui.js';
+import { getPlatform } from '../platforms/registry.js';
 
 let controller: BrowserWindow; let busy = false; let message = '准备登录'; let abort: AbortController | undefined;
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : undefined; };
 const fromCLI = process.argv.includes('--from-cli');
 const fromProfile = arg('--profile');
+const directLogin = fromCLI && Boolean(fromProfile);
 const push = async () => { const c = await loadConfig(); const s = { profiles: c.profiles, active: fromProfile ?? c.active, lockedProfile: fromProfile, busy, message }; if (controller && !controller.isDestroyed()) controller.webContents.send('lms:update', s); return s; };
 
 function harden(win: BrowserWindow) {
@@ -48,7 +50,7 @@ async function authorize(p: Profile, platform: PlatformType, ephemeral: Electron
       try {
         message = '正在确认登录…'; await push();
         await validateInWorker(p, platform, { kind: 'cookie', value: header, userAgent: win.webContents.getUserAgent() }, signal);
-        message = '登录成功，可以返回 Codex。'; await push(); finish();
+        message = '登录成功，可以返回终端或 Agent 客户端。'; await push(); finish();
       } catch { if (!done) { message = '登录未完成，请继续登录或重试。'; await push(); } }
       finally { validating = false; }
     };
@@ -67,12 +69,15 @@ async function start(profileId: string, selection: string) {
   ephemeral.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   ephemeral.setPermissionCheckHandler(() => false);
   ephemeral.on('will-download', event => event.preventDefault());
+  const timeout = setTimeout(() => abort?.abort(), 15 * 60_000);
+  let success = false;
   try {
-    for (const platform of selected) { message = `请完成 ${p.label} 的 ${platform === 'canvas' ? 'Canvas' : 'Blackboard'} 登录。`; await push(); await authorize(p, platform, ephemeral, abort.signal); }
-    message = '登录成功，可以返回 Codex。';
-    if (fromCLI) { app.exit(0); return; }
+    for (const platform of selected) { message = `请完成 ${p.label} 的 ${getPlatform(platform).label} 登录。`; await push(); await authorize(p, platform, ephemeral, abort.signal); }
+    message = '登录成功，可以返回终端或 Agent 客户端。';
+    success = true;
   } catch { message = '登录未完成，请重试。'; }
-  finally { abort?.abort(); await ephemeral.clearStorageData(); await ephemeral.clearCache(); busy = false; await push(); }
+  finally { clearTimeout(timeout); abort?.abort(); await ephemeral.clearStorageData(); await ephemeral.clearCache(); busy = false; await push(); }
+  if (fromCLI) app.exit(success ? 0 : 2);
 }
 
 app.on('window-all-closed', () => { abort?.abort(); app.exit(busy ? 2 : 0); });
@@ -83,12 +88,9 @@ app.on('window-all-closed', () => { abort?.abort(); app.exit(busy ? 2 : 0); });
 // exists (the process remains alive but appears to flicker or do nothing).
 async function boot() {
   await app.whenReady();
-  controller = new BrowserWindow({ show: true, width: 500, height: 740, title: 'lms-cli', webPreferences: { preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)), nodeIntegration: false, contextIsolation: true, sandbox: true } });
+  controller = new BrowserWindow({ show: !directLogin, width: 500, height: 740, title: 'lms-cli', webPreferences: { preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)), nodeIntegration: false, contextIsolation: true, sandbox: true } });
   controller.center();
-  controller.show();
-  controller.focus();
-  controller.moveTop();
-  controller.setAlwaysOnTop(true, 'floating');
+  if (!directLogin) { controller.show(); controller.focus(); controller.moveTop(); controller.setAlwaysOnTop(true, 'floating'); }
   setTimeout(() => { if (!controller.isDestroyed()) controller.setAlwaysOnTop(false); }, 1500);
   controller.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   controller.webContents.on('will-navigate', e => e.preventDefault());
@@ -96,10 +98,8 @@ async function boot() {
   ipcMain.handle('lms:state', e => { if (e.sender !== controller.webContents) throw new Error(); return push(); });
   ipcMain.handle('lms:login', (e, id, platform) => { if (e.sender !== controller.webContents) throw new Error(); void start(id, platform).catch(() => { message = '无法开始登录，请重试。'; void push(); }); });
   await controller.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(authorizationHTML())}`);
-  controller.show();
-  controller.focus();
-  controller.moveTop();
-  if (fromProfile) void start(fromProfile, arg('--platform') ?? 'all').catch(() => { message = '暂时无法连接所选学校，请返回助手检查学校配置。'; void push(); });
+  if (!directLogin) { controller.show(); controller.focus(); controller.moveTop(); }
+  if (fromProfile) void start(fromProfile, arg('--platform') ?? 'all').catch(() => { message = '暂时无法连接所选学校，请在终端检查学校配置。'; if (fromCLI) app.exit(2); else void push(); });
 }
 
 void boot().catch(() => { app.exit(1); });

@@ -1,7 +1,7 @@
 {
   "name": "lms-cli",
-  "version": "0.3.0",
-  "description": "Multi-school Canvas / Blackboard learning assistant with a read-only CLI, MCP server and local sign-in",
+  "version": "0.4.0",
+  "description": "Multi-school Canvas / Blackboard CLI and Agent tools with read-only MCP and local sign-in",
   "type": "module",
   "license": "MIT",
   "author": "LMS CLI contributors",
@@ -12,7 +12,7 @@
   "engines": { "node": ">=22.16.0" },
   "bin": { "lms": "bin/lms.js" },
   "main": "dist/src/auth/app.js",
-  "files": ["bin", "dist", "plugins/lms-cli", "docs", "vendor/*/LICENSE", "README.md", "PRIVACY.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md", "LICENSE"],
+  "files": ["bin", "dist", "plugins/lms-cli", "scripts/launchers", "docs", "vendor/*/LICENSE", "README.md", "PRIVACY.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md", "LICENSE"],
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -20,6 +20,8 @@
     "start": "node bin/lms.js",
     "auth:app": "electron .",
     "pack:cli": "npm run build && npm pack",
+    "pack:standalone": "npm run build && node scripts/pack-standalone.mjs",
+    "verify:standalone": "node scripts/verify-standalone.mjs",
     "pack:app": "npm run build && electron-builder --publish never",
     "prepack": "npm run build"
   },
@@ -30,6 +32,7 @@
     "commander": "14.0.3",
     "ical-generator": "10.0.0",
     "proper-lockfile": "4.1.2",
+    "tar": "7.5.22",
     "tough-cookie": "5.1.2",
     "unpdf": "1.8.1",
     "zod": "3.25.76"

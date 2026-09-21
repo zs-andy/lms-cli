@@ -1,5 +1,35 @@
 # Validation record — lms-cli
 
+## 0.4.0 CLI installation, discovery and updates — 2026-09-21
+
+Environment: macOS arm64, Node.js v25.7.0. Tests used temporary state and synthetic profiles; no school credentials or course data were accessed.
+
+- Full TypeScript check and build: passed. This supersedes the full-worktree type-check failure in the historical refactor record below.
+- Automated tests: **74 passed, 0 failed, 0 skipped**. Coverage includes public directory boundaries, search timeouts/limits, explicit terminal selection, setup idempotency, multi-account defaults, CLI/MCP discovery, update checks, successful upgrade transactions, checksum and runtime-verification failure, untrusted redirects and rollback.
+- Self-contained macOS arm64 CLI bundle: built with checksum-verified official Node and a prepared Electron authorization runtime. Relative framework links are preserved, and all archive entries pass the updater's extraction policy.
+- Clean standalone installation: passed with no system Node in PATH and isolated home, school-state and Codex directories. Verified native module loading, no-login setup, offline school search, **17-tool MCP discovery**, real Codex local-plugin registration, repeat registration, rollback and reinstall. No graphical windows were opened.
+- Interactive terminal setup: searched the local Chinese school alias, displayed the selected platform URLs/timezone, required explicit confirmation and returned profile-specific continuation commands without login windows.
+- Live public Canvas directory search: name search returned institution domains including CityU and PolyU. No returned school domain was contacted and no configuration was saved.
+- Public update check: returned `no-release` for the stable channel. Online installer downloads and a real published-version upgrade require matching stable Release assets; mocked-download transaction tests passed locally.
+- Production dependency audit: **0 known vulnerabilities** at verification time.
+- Agent skill and plugin validators: passed. POSIX installer/launcher syntax, package-content dry run and relative documentation links passed.
+- macOS signing inspection: the bundled upstream Electron runtime has an ad-hoc linker signature, no distributor Team ID or sealed resources; strict bundle-signature verification does not pass. This local CLI bundle is not a signed/notarized distribution. Publisher signing and OS trust acceptance remain release requirements.
+
+Release acceptance still requires current cross-platform CI, physical Windows/Linux checks, permitted school SSO/MFA and feature tests, plus distributor signing/notarization where applicable. No release was published by these checks. See [ACCEPTANCE.md](ACCEPTANCE.md) and [RELEASING.md](RELEASING.md).
+
+## Platform extension refactor — local working tree, 2026-09-21
+
+Environment: macOS arm64, Node.js v25.7.0. This record is local verification, not a new CI run, release or additional institution certification.
+
+- Changed CLI, MCP, worker, authorization and template entry points and their dependency graphs: TypeScript compilation passed.
+- Offline tests (`node --import tsx --test test/*.test.ts`): **45 passed, 0 failed, 0 skipped**. Includes all previous checks plus registry ownership/validation, lazy runtime imports, environment cleanup, old vault-path compatibility and a synthetic third-platform registration in an isolated copy. The third-platform test verifies config, CLI, MCP schema, login metadata, source-isolated vault storage and nine overview calls with at most three concurrent reads, without editing core.
+- Browser-based authorization-page check at a temporary loopback URL, 1280 × 720: passed using synthetic schools and a mock login bridge. Single/dual-platform selection and the submitted `exchange / blackboard` arguments were verified. No school login, remote content or real credentials were used. The rendered application had no errors or horizontal overflow.
+- Package-content dry run (`npm pack --dry-run --ignore-scripts`): platform runtimes and extension docs included; no vault/profile files or node_modules included. This is not a clean installation or installer-build check.
+- Relative links in README, CONTRIBUTING and the two new architecture/extension guides: **24 checked**.
+- Historical full-worktree check: blocked by `src/updates.ts:77` (`TS2339`, `release.assets.find`) at this checkpoint. The complete 0.4.0 check above supersedes that result.
+
+Not verified here: real-school SSO/MFA, additional platforms, physical Windows/Linux systems, mobile UI, new signed installers or fresh cross-platform CI. The records below describe earlier commits and must not be interpreted as CI results for this refactor.
+
 ## 0.3.0 multi-school preview — 2026-09-21
 
 Local environment: macOS arm64, Node.js v25.7.0. Tests use synthetic profiles and isolated temporary state; no real school credentials or course records were read.

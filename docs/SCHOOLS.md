@@ -1,28 +1,86 @@
-# 多校接入与兼容范围
+# 学校搜索与账号配置
 
-`lms-cli` 按平台适配，不为每所学校复制一套程序。一个 profile 表示一个学校/账号，包含独立 ID、显示名称、学校时区和一个或两个平台的 HTTPS 根地址。学校名称只用于显示，不参与平台识别；平台由 `--canvas` / `--blackboard` 明确指定。
+`lms-cli` 按平台适配，一个 profile 对应一个学校/账号，包含名称、独立 ID、学校时区和至少一个平台的 HTTPS 根地址。学校可同时使用 Canvas 与 Blackboard，无需为每所学校安装一套程序。
 
-## 接入流程
+## 搜索学校
 
-1. 从学校正式网站确认平台地址，不使用课程通知中要求改绑的新地址。请输入如 `https://school.instructure.com` 的根地址，而非 SSO 页面、课程链接或学校门户。
-2. 用 `lms init` / `lms profiles add` 添加配置，或明确要求助手通过 `lms_profile_add` 创建。至少选择一个平台，提供学校的 IANA 时区（例如 `Europe/London`）。保留严格 HTTPS 校验；目前不支持部署在 URL 子路径下的平台。
-3. 在 `lms --profile <id> auth login` 打开的独立窗口中完成学校 SSO/MFA。窗口显示所选学校及平台地址；不要求把密码、Cookie 或验证码发到聊天里。
-4. 运行 `lms --profile <id> check`，分别验证身份和课程列表。该命令不打开登录窗口、不输出个人资料/课程正文。它的成功只代表这些接口在本次会话可用。
-5. 按 [验收清单](ACCEPTANCE.md) 单独核对通知、作业、评分反馈、文件和日历。记录平台/版本、系统、日期与实际可用的功能，不上传真实学生数据。
+```sh
+lms setup
+lms setup --school "Hong Kong"
+```
 
-`lms presets` 当前只包含 PolyU 的网址预设。预设是配置便利项，不是“已认证学校”清单。本次多校改造没有使用其他学校的真实账号完成验收，也不将既有 PolyU 配置当作所有功能通过的证明。
+在终端输入学校名称或域名，结果会列出名称、平台地址与来源。输入编号选择，`r` 更换关键词，`m` 改为手动输入，`q` 取消。配置保存前还需确认学校网址和时区。
 
-## 平台边界
+只查看搜索结果，不修改配置或登录：
 
-- **Canvas**：复用现有 REST 连接器，支持经过验证的学校会话；学校允许时也可私下通过 `lms auth token --stdin` 导入个人令牌。能登录网页不保证 API 权限可用。
-- **Blackboard**：当前连接器依赖 Learn Ultra 内部接口，不等于支持所有 Learn/Original/旧版或定制部署。接口、Cookie 名称、学校反向代理及权限差异可能需要有测试支持的连接器改动。
-- **登录限制**：内嵌浏览器被学校或身份服务禁止时，应停止并说明限制；不绕过 MFA、设备合规或学校政策。不承诺永久免登录或后台自动续期。
-- **其他 LMS**：Moodle、Brightspace、Sakai 和学校自建系统未实现连接器，填入其网址不会获得支持。
+```sh
+lms schools search "Hong Kong"
+lms schools search "canvas.cityu.edu.hk" --platform canvas
+lms schools search "理大" --offline
+```
 
-## 多账号与隔离
+- Canvas 在线结果来自[官方学校目录](https://developerdocs.instructure.com/services/canvas/resources/account_domain_lookups)，支持名称与域名匹配；覆盖范围和结果数量由目录决定。
+- 本地预设随 CLI 分发，可离线搜索。PolyU 预设包含两个平台地址和 `Asia/Hong_Kong` 时区，支持 `polyu`、`理大`、简体及繁体中文名称。
+- Blackboard 当前未接入公开在线目录。可搜索本地预设，或直接输入学校公布的 Blackboard 地址。
+- 同一域名的多个登录入口合并为一个站点，具体身份服务由学校登录页面选择。
 
-添加第二个 profile 不改变当前默认；`lms profiles use <id>` 持久切换，`lms --profile <id> ...` 只影响本次命令。两个学校、或同校两个账号，都使用不同 ID。不要把一个学校的课程 ID 直接传给另一个学校的查询。
+在线搜索只向 Canvas 发送搜索词，不发送账号或凭据。`--offline` 跳过在线目录；网络故障会显示来源不可用，可重试或手动接入。中文与简称能否匹配取决于目录内容，可尝试英文全称或平台域名。目录匹配不检查个人权限，也不会自动打开结果中的网址。
 
-凭据、缓存、本地待办和下载目录按 profile 区分。系统密钥库仍按本机应用管理主密钥，并不是跨操作系统用户的多租户隔离。换账号时新建 profile 并重新登录；不会复制旧凭据到新地址。导出的 ICS 和课程文件是普通文件，需要自行保管。
+Agent 可以通过 `lms_school_search` 使用相同能力；选择学校、保存 profile 与授权是独立步骤，网址和时区需要用户确认。
 
-地址填错时，请新建正确的 profile，再明确切换；本版本不提供覆盖、自动合并或删除 profile 的操作，以免意外丢失会话和待办。
+## 手动接入
+
+```sh
+lms setup --manual
+```
+
+使用学校网站公布的 HTTPS 平台根地址，例如 `https://school.instructure.com`。不要填课程链接、学校门户、SSO 路径、查询参数或凭据。当前不支持部署在 URL 子路径下的平台。
+
+已明确地址和时区时，可使用非交互配置：
+
+```sh
+lms setup --label "My University" --timezone Europe/London \
+  --canvas https://canvas.example.edu --yes --no-login --no-codex
+```
+
+只填写需要的平台；双平台可同时提供 `--canvas` 与 `--blackboard`。`--yes` 确认明确给出的参数，不自动选择搜索结果，也不跳过学校 MFA。之后运行 `lms setup` 继续授权。
+
+PolyU 也可以直接使用预设：
+
+```sh
+lms setup --preset polyu --yes
+```
+
+## 多学校与多账号
+
+```sh
+lms setup --school "Another University"
+lms profiles list
+lms profiles use <id>
+lms --profile <id> canvas courses
+```
+
+添加账号保留原来的默认账号。`profiles use` 持久切换默认；`--profile` 仅指定本次操作。`lms setup` 没有新增学校参数时复用当前默认配置。
+
+同校另一个账号需要不同 ID：
+
+```sh
+lms setup --school "My University" --id second-account
+```
+
+账号凭据、缓存、本地待办和下载目录按 profile 区分，不复制旧账号凭据到新地址。学校时区用于处理通知时间与日历；应选择学校所在地的 IANA 时区，而非自动采用电脑所在地。
+
+地址填错时，新建正确配置，再用 `profiles use` 切换。程序不会覆盖、自动合并或删除已有账号。
+
+## 授权与兼容范围
+
+```sh
+lms --profile <id> auth login
+lms --profile <id> check
+```
+
+授权在学校页面完成；`check` 读取身份和课程列表，不打开窗口，也不输出个人资料正文。通知、成绩、文件等能力应分别验证。
+
+Canvas 使用 REST 连接器和经过验证的学校会话；学校允许时，也可通过 `lms auth token --stdin` 私下导入个人令牌。Blackboard 使用 Learn Ultra 内部接口，其他版本和定制部署可能需要适配。能登录网页不代表所有 API 均可访问。
+
+学校禁止内嵌登录或要求设备合规时，应遵守学校策略。会话到期后重新授权。当前实现仅适用于 Canvas 与 Blackboard；其他平台需通过[平台扩展接口](ADDING_A_PLATFORM.md)接入。

@@ -1,47 +1,76 @@
-# User acceptance checklist
+# 验收清单
 
-Use test accounts/content allowed by the institution. Do not paste credentials in issue reports.
+使用学校允许的测试账号和内容。记录操作系统、CPU 架构、CLI 版本、学校平台版本、耗时与结果，不在记录中保存凭据或学生资料。
 
-## Install and authorization
+## 安装与终端配置
 
-- Install the npm tarball in a clean directory on macOS and Windows; `lms --help`, `lms doctor` work without the source checkout.
-- Configure a custom school with `lms init --id ... --label ... --timezone ... --canvas ...` and/or `--blackboard ...`. Also check the optional `lms init --preset polyu` shortcut. Finish actual SSO/MFA with `lms --profile <id> auth login`, then run `lms --profile <id> check`. No manual Cookie/secret input. Closing/cancelling login must not erase previously working sessions.
-- Leave one MCP connection open, reauthorize, then query again in that same connection. No restart required. Locally log out one platform with `auth logout --platform ... --yes`: the other remains available; the logged-out one cannot return cached private results.
+- 在没有 Node.js、npm、Git 的用户环境安装自包含包；`lms --help`、`lms doctor` 可运行，无需管理员权限或源码目录。
+- 校验和缺失、不匹配、系统/架构错误、依赖缺失时明确失败，不切换已有安装。检查带空格的安装路径、重复安装、PATH 冲突和离线安装。
+- 首次 `lms setup` 在终端搜索、选择并确认学校及 IANA 时区；不显示图形化配置页面。`--no-login --no-codex` 不登录或修改客户端。
+- 配置现有学校不会覆盖账号、凭据或待办。第二个账号不会替换默认账号；后续提示明确指向所选 profile。
+- 本地插件接入不依赖客户端的终端 PATH，不改动无关配置。同名插件替换需确认；接入失败后可重复执行。
 
-## General capability, not a timetable-only demo
+## 学校搜索与接入
 
-Run these checks separately for each allowed institution, platform and account. `lms check` only probes identity/course listing; announcements, assignments, grades and files need these independent checks. A URL preset is not a verified-school badge.
+- 使用学校名称、域名和本地中文别名搜索；区分预设、Canvas 在线目录、离线来源和不可用来源。
+- 终端支持编号选择、重新搜索、取消和手动输入。不能自动选中第一项，`--yes` 不能代替用户选择搜索结果。
+- Canvas 目录故障、限流、超时和无匹配有不同的结果状态；Blackboard 无在线目录时仍提供预设和手动入口。
+- CLI 与 MCP 搜索不要求账号或登录，不写 profile，不携带凭据或访问候选学校私有接口。
+- 验证名称控制字符、异常域名、重复认证入口、过大响应及过多结果不会绕过边界。
+- 手动设置 Canvas-only、Blackboard-only 和双平台学校。根地址与时区由使用者核对，不从课程内容提取配置指令。
 
-1. “列出两平台的课程。”
-2. “某门课程老师最近通知了什么？附原文链接。”
-3. “帮我找到该课程的实验说明，说明提交要求。”
-4. “解释某次作业的评分反馈。”
-5. “这周的时间表是什么？把通知里的作业、考试和调课也算上。”
-6. “把已确认安排保存成待办/日历，并导出 ICS。”
+## 授权与窗口
 
-Check results against known source pages, not just a fluent answer. Course IDs and parameters must be correct. Narrow queries should avoid exhaustive file crawls. Unavailable permissions/partial API pages must remain visible. File formats outside upstream support should be reported honestly.
+- 仅缺失或过期授权时显示学校 SSO/MFA 页面，不额外显示学校选择控制窗口；有效授权无需重新登录。
+- 密码与验证码仅在学校页面输入，无手动 Cookie 复制。关闭或取消登录后及时返回终端，保留既有授权；重试需由用户发起。
+- 登录任务绑定学校和平台。旧凭据或另一平台的凭据不能使新授权提前成功，必须完成新的在线只读验证。
+- 保持 MCP 连接打开，重新授权后直接查询，无需重启。注销一个平台后，另一个仍可使用；被注销平台不能返回旧缓存的私有结果。
+- 检查目标系统的 SSO 弹出页、MFA、取消和超时清理。学校禁止内嵌登录时遵守其政策，不尝试绕过。
 
-## Schedule correctness
+## 查询能力
 
-- Homework announced only in a notice still appears even if Canvas assignment list is empty.
-- A later correction changes one existing task's time, keeping stable ID, source history, completion and notes.
-- A cancelled class is cancelled, not retained as mandatory; alternative/group-specific lab sessions are flagged until the user's group is known.
-- “Week 5” without a validated term-week mapping is not fabricated. A date without a time is not guessed as 23:59. Timezones are correct in display and ICS import.
-- Notifications older than the fast lookback/per-course limit and unread attachments are disclosed as coverage limits. Ask a narrower follow-up or explicitly request wider history when necessary.
+在每个获授权的学校、平台和账号分别验证，并与学校原始页面对照：
 
-## Multiple schools and upgrade compatibility
+1. 列出所配置平台的课程。
+2. 查询指定课程最近通知，附原文链接。
+3. 查找实验或作业说明，解释提交要求及附件。
+4. 查询作业评分反馈。
+5. 整理本周课程、作业与考试，包含通知中的调课和截止时间变更。
+6. 按用户要求保存来源明确的本地待办并导出 ICS。
 
-- Add a second school and confirm the first remains active; use `profiles use` to switch the default, or `--profile` for one command. An ambiguous school name must be clarified before reading private data.
-- Check Canvas-only, Blackboard-only and dual-platform profiles. The authorization UI offers only configured platforms and displays the selected school's origin. A CLI/MCP-initiated window cannot change the requested account.
-- Use separate profile IDs for two accounts at the same school. Verify courses, caches, saved tasks, downloads and logout effects do not cross accounts. Each profile uses its own school timezone.
-- Re-run authorization with a previously stored but expired session. It must not report success before a fresh live validation completes. A session for another school/platform cannot finish the job.
-- Upgrade a synthetic 0.2.0 configuration without changing its active profile, erasing saved state or migrating unrelated browser cookies. Remove the old npm package before installing the renamed one, and do not enable old and new marketplace plugins together.
+课程 ID、参数和时区必须正确。窄范围查询不应抓取所有课程附件。权限不足、分页截断、未读附件和不支持的文件格式必须明确呈现。`lms check` 只检查身份与课程列表，其他能力需分别验收。
 
-## Failure and security behavior
+## 安排与本地数据
 
-- Network blocked, expired sessions, one unavailable platform, `limit=101`, and missing IDs produce actionable errors, not empty-success “nothing due.”
-- A prompt injection inside a mock notice cannot cause credential access, shell commands, remote submissions, quiz attempts or message sending. Those operations are not in the reviewed tool list.
-- Installed files contain no credentials, real student state, developer paths, `.env` or logs. Linux keychain-unavailable state fails closed.
-- Check the authorization app UI and MFA popups on each target OS. Embedded login blocked by school policy is a compatibility limitation, not something to bypass.
+- 仅在通知中发布的作业仍能识别，不以空的作业 API 结果替代完整证据。
+- 新通知修改时间时更新同一待办，保留稳定 ID、来源历史、完成状态和个人备注。
+- 取消课程标记取消；分组和备选实验时间在用户组别明确前保持待确认。
+- 无学期周次映射时不推断“第 5 周”；未给时间的日期不补成 23:59。
+- 时区与 ICS 导入一致，未确认时间不导出，已有导出文件不覆盖。
+- 超出通知回溯窗口、课程上限或附件读取范围时说明覆盖情况，并按需继续读取。
 
-Record the OS, package version, school platform/version, elapsed time and success/failure for these checks. CI/offline tests do not substitute for actual school SSO and final user acceptance. Daily automations and calendar subscriptions are intentionally not configured by installation.
+## 多账号与版本兼容
+
+- 同校不同账号使用不同 profile；课程、缓存、待办、下载和注销互不串用。
+- `profiles use` 修改默认账号，`--profile` 仅指定当前命令。学校名称歧义需先澄清。
+- 使用合成 0.2.0 配置验证旧数据兼容，默认账号不变；不读取或迁移其他浏览器的凭据。
+- 旧品牌包升级后不同时启用旧、新插件，学校数据独立于程序保留。
+
+## 更新与恢复
+
+- 交互式 CLI 和 MCP 首次配置读取能提示新版本；自动检查不安装，不影响查询结果。
+- `LMS_UPDATE_CHECK=0` 禁用自动检查；管道、帮助、版本、诊断和离线搜索不隐式联网。显式检查仍可运行。
+- 无网络、API 限流或错误响应显示检查不可用，不误报已是最新版。
+- `lms update --check` 不下载；升级需要确认。未托管安装、缺少匹配附件时给出准确指引，明确的安装请求返回失败。
+- 验证成功升级、拒绝确认、下载中断、校验失败、解压拒绝、运行检查失败和锁冲突。失败不切换版本或损坏学校数据。
+- `lms update --rollback` 验证并恢复上一版本；重启 CLI 或新建 Agent 任务使用对应版本。插件刷新失败可单独修复。
+- 不自动清理仍可能运行的旧版本。重复安装、升级和回退后核对 profile、加密凭据及待办保持不变。
+
+## 错误与安全
+
+- 网络不可用、过期会话、单个平台故障、超限参数和缺失 ID 返回可处理错误，不输出空成功。
+- 合成通知中的提示注入不能触发读取凭据、执行命令、提交作业、开始考试或发送消息；未经审核工具不可调用。
+- 安装包不含真实状态、凭据、开发机路径、日志、备份或 `.env`。Linux 密钥服务不可用时不降级为明文存储。
+- 按 [SECURITY.md](../SECURITY.md) 检查 origin、重定向、下载和凭据隔离。对安装包另外核对签名及系统信任提示。
+
+自动测试与隔离安装验收不替代实际学校 SSO、系统密钥服务及功能权限验收。安装不会创建定时任务或外部日历订阅。

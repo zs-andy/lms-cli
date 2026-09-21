@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { addProfile, getProfile, initProfile, loadConfig, polyu, ProfileSchema, Origin, useProfile } from '../src/config.js';
 import { isFreshAuthorization } from '../src/auth/launch.js';
 import { Vault, type KeyProvider } from '../src/vault.js';
@@ -33,6 +33,8 @@ test('profile config isolates schools and refuses accidental replacement', async
 test('vault encrypts secrets and authenticates school, slot and generation', async () => {
   const generation = await vault.write(p, 'canvas', { secret: 'SYNTHETIC-COOKIE-ONLY' });
   const loaded = await vault.read<{ secret: string }>(p, 'canvas'); assert.equal(loaded?.value.secret, 'SYNTHETIC-COOKIE-ONLY'); assert.equal(loaded?.generation, generation);
+  const legacyName = createHash('sha256').update(`${p.id}\0canvas\0${p.canvas ?? ''}\0${p.blackboard ?? ''}`).digest('hex');
+  assert.equal(JSON.parse(await readFile(join(home, `${legacyName}.vault`), 'utf8')).generation, generation, 'Existing v0.2/v0.3 vault paths must not change');
   const files = (await readdir(home)).filter(f => f.endsWith('.vault'));
   for (const file of files) assert.equal((await readFile(join(home, file), 'utf8')).includes('SYNTHETIC'), false);
   assert.equal(await vault.read({ ...p, id: 'other-account' }, 'canvas'), null);

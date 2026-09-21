@@ -22,7 +22,7 @@
 审阅脚本后，可本地执行：
 
 ```sh
-sh install.sh --version v0.4.0 --no-setup
+sh install.sh --version v0.4.1 --no-setup
 sh install.sh --dir /absolute/path/lms-runtime --no-path --no-setup
 ```
 
@@ -31,7 +31,7 @@ PowerShell 对应 `-Version`、`-InstallDir`、`-NoSetup`、`-NoPath`。版本�
 离线安装：
 
 ```sh
-sh install.sh --archive /path/lms-cli-0.4.0-darwin-arm64.tar.gz --checksum-file /path/SHA256SUMS.txt --version v0.4.0 --no-setup
+sh install.sh --archive /path/lms-cli-0.4.1-darwin-arm64.tar.gz --checksum-file /path/SHA256SUMS.txt --version v0.4.1 --no-setup
 ```
 
 Windows 对应 `-Archive`、`-ChecksumFile`、`-Version`。校验和必须来自可信发布，不要自行给陌生安装包补写校验和。安装无需管理员权限，不自动卸载全局 npm 包，不覆盖无关同名命令。
@@ -44,9 +44,9 @@ POSIX 安装器需要更新 PATH 时先备份 shell 配置，再附加带 `# lms
 lms-cli-runtime/
   .lms-install       本工具的目录标记
   bin/               稳定启动入口
-  current            当前版本，例如 v0.4.0
+  current            当前版本，例如 v0.4.1
   previous           上一版本
-  versions/v0.4.0/   不原地覆盖的运行时
+  versions/v0.4.1/   不原地覆盖的运行时
 ```
 
 程序目录不同于 `lms doctor` 显示的学校数据目录。学校配置、加密凭据和待办不在 `versions/` 中；不要修改 `LMS_HOME` 来升级程序，否则会选择另一份状态和密钥命名空间。

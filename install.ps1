@@ -4,6 +4,10 @@ param(
   [string]$Archive, [string]$ChecksumFile, [switch]$NoSetup, [switch]$NoPath
 )
 $ErrorActionPreference = 'Stop'
+# Use this PowerShell edition's built-in modules. A parent PowerShell 7 process
+# can otherwise leave Windows PowerShell 5.1 with an incompatible PSModulePath.
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Management\Microsoft.PowerShell.Management.psd1') -ErrorAction Stop
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $lmsRoot = [IO.Path]::GetFullPath($InstallDir)
 if ($lmsRoot -eq [IO.Path]::GetPathRoot($lmsRoot) -or $lmsRoot -eq [Environment]::GetFolderPath('UserProfile')) { throw 'Unsafe install directory.' }

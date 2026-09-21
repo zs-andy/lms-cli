@@ -6,9 +6,11 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import * as tar from 'tar';
+import { macReleaseConfig, signStandaloneMac, notarizeStandaloneMac } from './macos-release.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+const signing = macReleaseConfig();
 const stage = await mkdtemp(join(tmpdir(), 'lms-bundle-'));
 const output = join(root, 'release-cli');
 const name = `lms-cli-${pkg.version}-${process.platform}-${process.arch}.tar.gz`;
@@ -70,11 +72,15 @@ try {
     const prefix = nodeName.replace(/\.tar\.gz$/, '');
     await tar.x({ file: archive, cwd: join(stage, 'runtime'), strip: 1, filter: path => [prefix, `${prefix}/`, `${prefix}/bin/`, `${prefix}/bin/node`, `${prefix}/LICENSE`].includes(path) });
     await rename(join(stage, 'runtime', 'bin', 'node'), join(stage, 'runtime', 'node'));
+    await rm(archive); // Do not submit the upstream archive alongside our re-signed runtime.
   }
+  if (signing) await signStandaloneMac(stage, signing);
   await cp(join(root, 'scripts', 'launchers'), join(stage, 'launchers'), { recursive: true });
   await chmod(join(stage, 'launchers', 'lms'), 0o755);
-  await writeFile(join(stage, 'bundle.json'), JSON.stringify({ schema: 1, version: pkg.version, platform: process.platform, arch: process.arch, node: nodeVersion }, null, 2));
+  await writeFile(join(stage, 'bundle.json'), JSON.stringify({ schema: 1, version: pkg.version, platform: process.platform, arch: process.arch, node: nodeVersion,
+    ...(signing ? { macSigning: { teamId: signing.teamId, hardenedRuntime: true } } : {}) }, null, 2));
   await mkdir(output, { recursive: true });
+  if (signing) await notarizeStandaloneMac(stage, signing, join(output, `${name}.notarization.json`));
   // Preserve Electron framework symlinks/signatures. npm's CLI shims are unused and need not ship.
   await tar.c({ file: join(output, name), cwd: stage, gzip: true, portable: true, follow: false, noMtime: true, filter: path => !path.split('/').includes('.bin') }, ['runtime', 'app', 'launchers', 'bundle.json']);
   const digest = createHash('sha256').update(await readFile(join(output, name))).digest('hex');

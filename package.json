@@ -1,6 +1,6 @@
 {
   "name": "lms-cli",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Multi-school Canvas / Blackboard CLI and Agent tools with read-only MCP and local sign-in",
   "type": "module",
   "license": "MIT",
@@ -21,6 +21,7 @@
     "auth:app": "electron .",
     "pack:cli": "npm run build && npm pack",
     "pack:standalone": "npm run build && node scripts/pack-standalone.mjs",
+    "pack:app:release": "npm run build && node scripts/pack-macos-app.mjs",
     "verify:standalone": "node scripts/verify-standalone.mjs",
     "pack:app": "npm run build && electron-builder --publish never",
     "prepack": "npm run build"
@@ -39,6 +40,7 @@
   },
   "optionalDependencies": { "electron": "44.4.3" },
   "devDependencies": {
+    "@electron/osx-sign": "1.3.3",
     "@types/node": "24.5.2",
     "@types/proper-lockfile": "4.1.4",
     "electron-builder": "26.15.3",
@@ -53,7 +55,7 @@
     "files": ["dist/**/*", "package.json", "LICENSE", "THIRD_PARTY_NOTICES.md", "vendor/*/LICENSE"],
     "asarUnpack": ["**/*.node"],
     "npmRebuild": false,
-    "mac": { "category": "public.app-category.education", "identity": null, "icon": "assets/lms-icon.png", "target": ["dmg", "zip"] },
+    "mac": { "category": "public.app-category.education", "hardenedRuntime": true, "gatekeeperAssess": false, "icon": "assets/lms-icon.png", "target": ["dmg", "zip"] },
     "win": { "icon": "assets/lms-icon.png", "target": ["nsis"], "artifactName": "lms-cli-${version}-${arch}.${ext}" },
     "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true },
     "linux": { "icon": "assets/lms-icon.png", "target": ["AppImage"], "category": "Education" }

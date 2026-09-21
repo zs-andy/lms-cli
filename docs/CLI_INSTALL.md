@@ -1,6 +1,6 @@
 # CLI 安装、升级与恢复
 
-0.4.0 以 CLI 为入口。安装、配置、诊断、更新和回退均在终端进行；只有学校 SSO/MFA 可能显示网页。`setup --no-login` 不打开窗口或读取学校私有接口。
+0.4.1 以 CLI 为入口。安装、配置、诊断、更新和回退均在终端进行；只有学校 SSO/MFA 可能显示网页。`setup --no-login` 不打开窗口或读取学校私有接口。
 
 ## 自包含分发
 
@@ -70,5 +70,7 @@ lms-cli-runtime/
 3. 检查产物不含开发机路径、真实配置、凭据、日志或测试用户数据。
 4. 按学校政策验证 SSO/MFA、取消、重试、查询和升级后的授权保持。
 5. 明确签名、公证与系统安全提示的状态，不通过关闭系统安全保护包装成“一键”。
+
+macOS 稳定版使用 Developer ID Application 签名并完成 Apple 公证。自包含 CLI 保留签名后的 Node、Electron 授权运行时和原生模块；授权 App 的 DMG/ZIP 也必须通过公证票据和 Gatekeeper 验收。缺少匹配签名或公证时，Release 保持预览状态。
 
 发布步骤和资产要求见 [RELEASING.md](RELEASING.md)。

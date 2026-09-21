@@ -1,6 +1,6 @@
 # Validation record — lms-cli
 
-## 0.4.0 CLI installation, discovery and updates — 2026-09-21
+## 0.4.0 CLI installation, discovery and updates — historical baseline, 2026-09-21
 
 Environment: macOS arm64, Node.js v25.7.0. Tests used temporary state and synthetic profiles; no school credentials or course data were accessed.
 
@@ -13,9 +13,21 @@ Environment: macOS arm64, Node.js v25.7.0. Tests used temporary state and synthe
 - Public update check: returned `no-release` for the stable channel. Online installer downloads and a real published-version upgrade require matching stable Release assets; mocked-download transaction tests passed locally.
 - Production dependency audit: **0 known vulnerabilities** at verification time.
 - Agent skill and plugin validators: passed. POSIX installer/launcher syntax, package-content dry run and relative documentation links passed.
-- macOS signing inspection: the bundled upstream Electron runtime has an ad-hoc linker signature, no distributor Team ID or sealed resources; strict bundle-signature verification does not pass. This local CLI bundle is not a signed/notarized distribution. Publisher signing and OS trust acceptance remain release requirements.
+- Historical 0.4.0 inspection: the bundled upstream Electron runtime had an ad-hoc linker signature and was not suitable for the stable channel. The signed 0.4.1 process and results are recorded below.
 
-Release acceptance still requires current cross-platform CI, physical Windows/Linux checks, permitted school SSO/MFA and feature tests, plus distributor signing/notarization where applicable. No release was published by these checks. See [ACCEPTANCE.md](ACCEPTANCE.md) and [RELEASING.md](RELEASING.md).
+The historical 0.4.0 record did not publish a stable release. Current signed-release validation is recorded below; cross-platform CI, physical Windows/Linux checks and permitted school SSO/MFA remain separate acceptance items. See [ACCEPTANCE.md](ACCEPTANCE.md) and [RELEASING.md](RELEASING.md).
+
+## 0.4.1 signed macOS release candidate — 2026-09-21
+
+Environment: macOS arm64, Node.js v25.7.0, Developer ID Application `Si Yi Lyu (N9DDMY3PQ3)`. No school credentials or course data were accessed.
+
+- TypeScript build and automated tests: **77 passed, 0 failed, 0 skipped**.
+- macOS standalone CLI: Node 24.20.0, Electron 44.4.3, native `.node` modules and Electron Framework/Helper code were signed with the same Developer ID identity, Hardened Runtime and Apple timestamps. The archive passed strict signature verification and updater archive checks.
+- Apple notarization: standalone CLI submission `b353078c-0c9e-4396-8c0d-16e9cca2842c` returned **Accepted**. SHA-256: `fa18bb3b3c1d8d855638b6f2a1599c4babc5c7dc37efc0f03691cd7a7ebef9d2`.
+- Authorization App: signed DMG and ZIP built from the same source. DMG notarization submission `54da178f-b185-4f91-8b06-107c3c18a924` returned **Accepted**; the ticket was stapled and validated with `xcrun stapler validate`, `spctl` and `codesign --verify --deep --strict`.
+- The Apple notarization profile is stored in the local Keychain as `lms-cli`; no password or private key is stored in the repository.
+
+The 0.4.1 signed artifacts are ready for a new stable Release after cross-platform assets and release metadata are attached. The existing v0.4.0 preview assets were not overwritten.
 
 ## Platform extension refactor — local working tree, 2026-09-21
 

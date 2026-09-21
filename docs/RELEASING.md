@@ -39,7 +39,33 @@ npm run verify:standalone
 npm run pack:app
 ```
 
-macOS 签名、公证和 Windows 签名使用分发方的证书。仓库默认构建配置不包含发布证书。检查 macOS 嵌套框架及辅助程序的签名，避免打包复制破坏 Electron 框架链接。
+macOS 直接分发版本使用 Developer ID Application、Hardened Runtime 和 Apple 公证。证书私钥保存在本机钥匙串，不放入仓库或 CI 日志。首次在本机配置公证凭据：
+
+```sh
+xcrun notarytool store-credentials lms-cli \
+  --apple-id <Apple ID> \
+  --team-id <Team ID>
+```
+
+随后在 macOS 上执行：
+
+```sh
+LMS_MAC_RELEASE=1 \
+LMS_MAC_SIGN_IDENTITY='Developer ID Application: <名称> (<Team ID>)' \
+LMS_NOTARY_PROFILE=lms-cli \
+npm run pack:app:release
+```
+
+自包含 CLI 的 macOS 版本也按同一方式签名和公证：
+
+```sh
+LMS_MAC_RELEASE=1 \
+LMS_MAC_SIGN_IDENTITY='Developer ID Application: <名称> (<Team ID>)' \
+LMS_NOTARY_PROFILE=lms-cli \
+npm run pack:standalone
+```
+
+发布前必须检查 Electron 主程序、Frameworks、Helper、Node、原生 `.node` 模块的 Team ID、Hardened Runtime、时间戳和严格签名；同时运行 `xcrun stapler validate`、`spctl` 和 `codesign --verify --deep --strict`。Windows 签名仍使用分发方证书。不要把本地钥匙串凭据改写成仓库变量或命令行密码参数。
 
 ## CI 与 Release
 

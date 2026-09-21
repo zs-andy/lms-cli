@@ -1,6 +1,6 @@
 {
   "name": "lms-cli",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Multi-school Canvas / Blackboard CLI and Agent tools for school discovery, courses, announcements, assignments, feedback and schedules.",
   "author": {
     "name": "zs-andy and contributors",

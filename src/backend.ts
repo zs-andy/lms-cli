@@ -9,7 +9,7 @@ import { vault } from './vault.js';
 import { isAllowed, platformFor } from './policy.js';
 import { LmsError, publicError } from './errors.js';
 import { VERSION } from './version.js';
-import { getPlatform, isPlatformEnvironment, toolPlatform } from './platforms/registry.js';
+import { getPlatform, isPlatformEnvironment, isLocalFileTool, toolPlatform } from './platforms/registry.js';
 import { planOverview } from './platforms/overview.js';
 import type { ReadCall } from './platforms/types.js';
 
@@ -28,7 +28,7 @@ export const connectUpstream: Connect = async (p, platform) => {
   try {
     await client.connect(transport, { timeout: 15_000 });
     const { tools } = await client.listTools();
-    return { tools: tools.filter(t => isAllowed(t.name, platform)), call: (name, args) => client.callTool({ name, arguments: args }, undefined, { timeout: 45_000 }) as Promise<CallToolResult>, close: () => client.close() };
+    return { tools: tools.filter(t => isAllowed(t.name, platform)), call: (name, args) => client.callTool({ name, arguments: args }, undefined, { timeout: isLocalFileTool(name) ? 360_000 : 45_000 }) as Promise<CallToolResult>, close: () => client.close() };
   } catch { await client.close().catch(() => {}); throw new LmsError('CONNECTOR_UNAVAILABLE', `${platform} connector did not start.`, 'Run lms doctor. Reinstall the package if its built files are missing.'); }
 };
 
@@ -78,9 +78,10 @@ export class Backend {
       const generation = await this.generation(p, platform);
       if (!generation) throw new LmsError('AUTH_REQUIRED', `Sign in to ${platform}.`, `Run lms auth login --profile ${p.id} --platform ${platform}.`);
       const key = createHash('sha256').update(JSON.stringify([p, generation, name, args])).digest('hex');
-      const cached = this.cache.get(key);
+      const cacheable = !isLocalFileTool(name);
+      const cached = cacheable ? this.cache.get(key) : undefined;
       if (!options.fresh && cached && Date.now() - Date.parse(cached.fetchedAt) < 60_000) return { ...cached, cached: true, elapsedMs: Date.now() - started };
-      const running = this.inFlight.get(key); if (running) return running;
+      const running = cacheable ? this.inFlight.get(key) : undefined; if (running) return running;
       const read = (async () => {
         let data: CallToolResult;
         try { data = await client.call(name, args); }
@@ -91,17 +92,29 @@ export class Backend {
           if (/SESSION_EXPIRED|NOT_AUTHENTICATED|expired|redirected|credentials|AUTH_REQUIRED|\b401\b/i.test(diagnostic)) throw new LmsError('AUTH_REQUIRED', `${platform} requires authorization.`, `Run lms auth login --profile ${p.id} --platform ${platform}.`);
           if (/FORBIDDEN|\b403\b/i.test(diagnostic)) throw new LmsError('FORBIDDEN', 'The platform denied access to this resource.');
           if (/NOT_FOUND|\b404\b/i.test(diagnostic)) throw new LmsError('NOT_FOUND', 'The platform could not find this resource.');
+          const downloadCode = diagnostic.match(/\b(DOWNLOAD_(?:INPUT|FILENAME|LIMIT|INVALID|INCOMPLETE|EXISTS))\b/)?.[1];
+          if (downloadCode) {
+            const messages: Record<string, string> = {
+              DOWNLOAD_INPUT: 'Use a positive Canvas file ID and an absolute local directory.',
+              DOWNLOAD_FILENAME: 'Use a shorter filename without directory separators.',
+              DOWNLOAD_LIMIT: 'The file exceeds the configured download byte limit.',
+              DOWNLOAD_INVALID: 'The response is not the requested file. No final file was saved.',
+              DOWNLOAD_INCOMPLETE: 'The download was incomplete. No final file was saved; retry the request.',
+              DOWNLOAD_EXISTS: 'A file with that name already exists. Existing files were preserved.',
+            };
+            throw new LmsError(downloadCode, messages[downloadCode]!);
+          }
           throw new LmsError('UPSTREAM_FAILED', 'The platform request failed. This is not an empty result.', 'Check scope and IDs; try a smaller request or reauthorize.');
         }
         const result: ReadResult = { ...base, ok: true, fetchedAt: new Date().toISOString(), elapsedMs: Date.now() - started, data };
         // Memory-only response caching; never persist raw course data or auth errors in logs.
-        if (Buffer.byteLength(JSON.stringify(data)) <= 1_000_000) {
+        if (cacheable && Buffer.byteLength(JSON.stringify(data)) <= 1_000_000) {
           this.cache.set(key, result); if (this.cache.size > 80) this.cache.delete(this.cache.keys().next().value!);
         }
         return result;
       })();
-      this.inFlight.set(key, read);
-      try { return await read; } finally { this.inFlight.delete(key); }
+      if (cacheable) this.inFlight.set(key, read);
+      try { return await read; } finally { if (cacheable) this.inFlight.delete(key); }
     } catch (e) { return { ...base, elapsedMs: Date.now() - started, error: publicError(e) }; }
   }
   async batch(p: Profile, calls: ReadCall[], fresh = false) {

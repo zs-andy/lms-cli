@@ -184,12 +184,11 @@ async function fetchJson(url: URL): Promise<{ data: unknown; nextUrl: string | n
 /**
  * Download a file from a Canvas-issued URL.
  *
- * Token-authenticated sessions get a `verifier=` param that makes file URLs
- * self-authenticating; cookie-authenticated sessions do not, so the session
- * cookie has to ride along or Canvas answers 500. Redirects are followed by
- * hand: file URLs often bounce to a CDN, which must never receive credentials.
+ * Always authenticate same-origin requests: Canvas download URLs are not
+ * guaranteed to include a verifier. Follow redirects manually so CDN requests
+ * never receive Canvas credentials. The caller controls the total time budget.
  */
-export async function canvasDownload(fileUrl: string): Promise<Buffer> {
+export async function canvasDownloadResponse(fileUrl: string, signal = AbortSignal.timeout(30_000)): Promise<Response> {
   const canvasOrigin = new URL(baseUrl()).origin;
   let url = fileUrl;
 
@@ -199,24 +198,33 @@ export async function canvasDownload(fileUrl: string): Promise<Buffer> {
       throw new Error("Refusing an insecure Canvas file download URL");
     }
     const sameHost = target.origin === canvasOrigin;
+    if (sameHost && /^\/(login|logout|saml|sso)(\/|$)/i.test(target.pathname)) {
+      throw new Error('AUTH_REQUIRED: Canvas download requires school sign-in.');
+    }
     const res = await fetch(url, {
       headers: sameHost ? authHeaders() : {},
       redirect: "manual",
-      signal: AbortSignal.timeout(30_000),
+      signal,
     });
 
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
+      await res.body?.cancel();
       if (!location) throw new Error(`Canvas redirected (${res.status}) without a location header`);
       url = new URL(location, url).toString();
       continue;
     }
     if (!res.ok) {
+      await res.body?.cancel();
       throw new Error(`Download failed (${res.status} ${res.statusText}) for ${new URL(url).pathname}`);
     }
-    return Buffer.from(await res.arrayBuffer());
+    return res;
   }
   throw new Error("Too many redirects while downloading the file");
+}
+
+export async function canvasDownload(fileUrl: string): Promise<Buffer> {
+  return Buffer.from(await (await canvasDownloadResponse(fileUrl)).arrayBuffer());
 }
 
 /** GET a single (non-paginated) resource. */

@@ -139,3 +139,20 @@ lms auth logout --platform blackboard --yes
 ```
 
 只删除本地对应平台的凭据，不撤销学校服务器会话，不删除待办、下载文件或导出日历。使用 `--profile <id>` 可指定其他账号。数据保存与清理见 [PRIVACY.md](../PRIVACY.md)。
+
+## Download original Canvas files
+
+`canvas_read_file` extracts text. To save a complete PDF, Office document, ZIP, or other original file locally, use `lms_download_file` (MCP) or `lms download` (CLI). Neither operation changes Canvas.
+
+```sh
+lms --profile <profile-id> download <file-id> --directory /absolute/destination
+lms --profile <profile-id> download <file-id> --directory /absolute/destination --filename lecture.pdf --on-conflict error
+```
+
+For the full low-level schema, run `lms tools --name canvas_download_file`, then call `lms call canvas_download_file --args '<JSON object>'`. `directory` must be absolute; `filename` must be a filename without directory separators. The default conflict policy renames the new file. `on_conflict=error` fails on an existing name. Neither policy overwrites existing files. Successful results include `path`, `filename`, `bytes`, `sha256`, `source_url`, and the download timestamp.
+
+MCP clients use the dedicated `lms_download_file` tool with `profile`, `file_id`, and `directory`; optional parameters are `filename`, `on_conflict`, and `max_bytes`. This tool is annotated as a local write. Read-only `lms_call` and `lms_batch` reject file-saving operations. Downloads are neither cached nor coalesced. The default limit is 512 MiB, configurable up to 1 GiB through `max_bytes`. Downloads have a five-minute total budget; clients should allow at least 360 seconds for large requests.
+
+Downloads reuse the existing school authorization flow. Only same-origin Canvas requests carry credentials; requests redirected to a CDN do not. Bytes are streamed into a private temporary directory, checked against Canvas's size metadata, unexpected HTML, and PDF signatures where applicable, then published without replacing an existing file. Failed transfers clean up temporary files. A retry starts from zero; resumable downloads are not implemented. Forced termination or power loss can leave a `.lms-download-*` directory; remove it only after confirming that no download is using it.
+
+If `canvas_list_files` receives 403, it checks module file references and same-origin links in up to five accessible course pages, with explicit partial-coverage notes. Omitted module items are fetched through their paginated endpoint; the page-list fallback reads at most one page of ten entries. A discovered reference does not guarantee permission to read the file: Canvas still decides access. Download links may require the current session and are not guaranteed to work anonymously. External video services and third-party platforms are outside this feature.

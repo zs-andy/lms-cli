@@ -26,6 +26,12 @@ The plugin only registers the MCP server; it does not install the CLI. Use the r
 
 `lms_profiles` returns a public GitHub release check once per session. If an update is available, briefly offer `lms update` without interrupting the user's query. Use `lms_update_check` for an explicit fresh check. Do not install without permission. Offline or rate-limited results are not evidence of being current. `LMS_UPDATE_CHECK=0` disables automatic checks.
 
+## Canvas original files
+
+When asked to save/download an original file, use `lms_download_file` with the explicit profile, a discovered `file_id`, and an absolute local `directory`. Discover the current schema first. CLI fallback: `lms --profile <id> download <file-id> --directory <absolute-directory>`, or `lms call canvas_download_file` with its exact schema. This changes local files only; normal `lms_call` and `lms_batch` remain read-only and reject file-saving tools. Preserve existing files (default rename, optional error), and report the returned path, size and SHA-256. Downloads are uncached. If the MCP tool is not visible in an existing session, use the updated CLI or reconnect the LMS connector.
+
+`canvas_read_file` extracts text without saving the original. A download URL may require the existing Canvas session/token; do not copy credentials or assume the link is anonymous. If course Files returns 403, the updated listing tries module references and a bounded sample of course pages, with explicit partial coverage. Individual files may still be readable. Do not treat this fallback as a full export or automatically download every file. AUTH_REQUIRED follows the normal school authorization flow.
+
 ## Authorization
 
 Every upstream read checks authorization first. If it is missing, the read itself opens the isolated cross-platform authorization app and returns an `authorization.id`; call `lms_auth_wait` while the user completes school login/MFA privately, then retry the original query. Do not make the user manually copy a Cookie or open a separate browser. If a session expires during a read, the result includes a new authorization job and the same retry flow. `lms_auth_status` alone only checks saved metadata, not live validity.

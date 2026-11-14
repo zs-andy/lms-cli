@@ -4,6 +4,7 @@ export const canvas = {
   id: 'canvas' as const,
   label: 'Canvas',
   environmentPrefixes: ['CANVAS_'],
+  localFileTools: ['canvas_download_file'],
   readTools: [
     'canvas_get_profile',
     'canvas_list_courses',

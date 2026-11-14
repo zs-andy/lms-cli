@@ -133,6 +133,21 @@ auth.command('totp').description('Import an institution-provided TOTP seed priva
 auth.command('logout').requiredOption('--platform <name>', 'Remove authorization for this platform only').requiredOption('--yes', 'Confirm local credential removal; school session is not remotely revoked').action(async o => { const p = await getProfile(profileId()); const platform = Platform.parse(o.platform); await vault.remove(p, platform); out({ ok: true, profile: p.id, platform, locallySignedOut: true, remoteSessionRevoked: false }); });
 
 program.command('tools').description('Discover tools; pass --name to inspect its exact JSON schema').option('--platform <name>').option('--query <text>').option('--name <tool>').action(async o => out(await withBackend(profileId(), (b, p) => b.catalog(p, { ...o, platform: o.platform ? Platform.parse(o.platform) : undefined }))));
+program.command('download <file-id>').description('Save one original Canvas file locally without replacing existing files')
+  .requiredOption('--directory <path>', 'Absolute destination directory').option('--filename <name>', 'Optional filename')
+  .option('--on-conflict <mode>', 'rename or error', 'rename')
+  .action(async (fileId, options) => {
+    const p = await getProfile(profileId());
+    const status = await authStatus(p);
+    if (!status.platforms.find(s => s.platform === 'canvas')?.authorized) {
+      return out({ ok: false, error: { code: 'AUTH_REQUIRED', message: 'Complete school login, then retry this download.' }, authorization: startLogin(p, 'canvas') });
+    }
+    const result = await withBackend(p.id, b => b.call(p, 'canvas_download_file', {
+      file_id: Number(fileId), directory: options.directory, filename: options.filename, on_conflict: options.onConflict,
+    }));
+    if (result.error?.code === 'AUTH_REQUIRED') return out({ ...result, authorization: startLogin(p, 'canvas') });
+    out(result);
+  });
 program.command('call <tool>').description('Call an exact, reviewed upstream read tool').option('--args <json>', 'Arguments matching the tool schema', '{}').option('--fresh').action(async (tool, o) => out(await withBackend(profileId(), (b, p) => b.call(p, tool, parse(o.args), o))));
 for (const platform of platformIds) {
   const { aliases, courseArgument: course } = getPlatform(platform);

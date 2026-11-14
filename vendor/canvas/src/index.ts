@@ -19,6 +19,9 @@ import {
 } from "./canvas.js";
 import { htmlToText, trimQuotedReply } from "./html.js";
 import { extractFileText } from "./extract.js";
+import { saveCanvasFile } from './download.js';
+import { CanvasDownloadShape } from '../../../src/platforms/canvas/download-schema.js';
+import { listCourseFiles } from './files.js';
 
 /**
  * Single source of truth for the version: package.json, one level up from the
@@ -72,6 +75,12 @@ function safe<A>(fn: (args: A) => Promise<ToolResult>): (args: A) => Promise<Too
 }
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, openWorldHint: true };
+server.registerTool('canvas_download_file', {
+  title: 'Save an original Canvas file locally',
+  description: 'Download one authorized Canvas file to an absolute local directory. Streams original bytes, checks size and PDF signature, preserves existing files, and returns path, bytes and SHA-256. No remote changes. MCP clients use lms_download_file; CLI uses lms call canvas_download_file.',
+  inputSchema: CanvasDownloadShape,
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+}, safe(async options => jsonResult(await saveCanvasFile(options))));
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -524,7 +533,7 @@ server.registerTool(
   {
     title: "List course files",
     description:
-      "List files in a course (slides, PDFs, handouts). Use search_term to filter by name. Returns file IDs for canvas_get_file_link.",
+      "List files in a course (slides, PDFs, handouts). Use search_term to filter by name. Returns file IDs for reading or downloading. If Files returns 403, tries module references and up to five accessible course pages; reports incomplete coverage.",
     inputSchema: {
       course_id: z.number().describe("Canvas course ID"),
       search_term: z.string().optional().describe("Filter files by name"),
@@ -532,19 +541,8 @@ server.registerTool(
     annotations: READ_ONLY,
   },
   safe(async ({ course_id, search_term }) => {
-    const { items, truncated } = await canvasGetPaginated(`/courses/${course_id}/files`, {
-      search_term,
-      sort: "updated_at",
-      order: "desc",
-    });
-    const rows = items.map((f: any) => ({
-      id: f.id,
-      filename: f.display_name,
-      content_type: f["content-type"],
-      size_kb: Math.round((f.size ?? 0) / 1024),
-      updated_at: f.updated_at,
-    }));
-    return jsonResult(rows, truncNote(truncated, "files"));
+    const { rows, note } = await listCourseFiles(course_id, search_term);
+    return jsonResult(rows, note);
   })
 );
 
@@ -553,7 +551,7 @@ server.registerTool(
   {
     title: "Get file download link",
     description:
-      "Get a temporary authenticated download URL for a file (file_id from canvas_list_files or module items). The URL expires, so use it promptly.",
+      "Get a Canvas download URL, which may require the current session or token. To save locally use lms_download_file (MCP) or canvas_download_file (CLI).",
     inputSchema: {
       file_id: z.number().describe("Canvas file ID"),
     },
@@ -566,7 +564,7 @@ server.registerTool(
       content_type: f["content-type"],
       size_kb: Math.round((f.size ?? 0) / 1024),
       download_url: f.url,
-      note: "URL is time-limited; download promptly.",
+      note: "This URL may require Canvas authentication; it is not guaranteed to be an anonymous download link.",
     });
   })
 );

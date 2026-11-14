@@ -94,3 +94,8 @@ Backend 同时检查“工具被允许”和“工具属于所连接的平台”
 6. `test/schools.test.ts`、`test/setup-update.test.ts`、`test/upgrade.test.ts`：搜索、选择、幂等配置、插件注册、更新事务与回退。
 7. `npm run verify:standalone`：无系统 Node、隔离状态目录的安装与 MCP 验收。
 8. 获授权的使用者按 [验收清单](ACCEPTANCE.md) 进行真实学校验证；离线测试不能替代 SSO/MFA、平台版本及接口权限验收。
+
+
+## Local file download operations
+
+`PlatformDefinition.localFileTools` lists reviewed remote reads that save local files, separately from `readTools` and overview plans. The registry still determines ownership by exact tool names. Backend disables response caching and request coalescing for local file tools. The public `lms_download_file` entry point is annotated as a local write and reuses the authorization flow; `lms_call` and `lms_batch` reject file-saving operations. Canvas originals are downloaded inside the worker through the existing authenticated HTTP layer. Credentials never enter public tool parameters or download results.

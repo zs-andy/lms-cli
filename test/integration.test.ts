@@ -35,8 +35,15 @@ test('public MCP server handles discovery, denied writes, profile listing and sh
   const transport = new StdioClientTransport({ command: process.execPath, args: [fileURLToPath(new URL('../dist/src/cli.js', import.meta.url)), 'mcp'], env: { ...process.env as Record<string, string>, LMS_HOME: home }, stderr: 'pipe' });
   transport.stderr?.on('data', () => {});
   try {
-    await client.connect(transport); const tools = (await client.listTools()).tools; assert.equal(tools.length, 17);
+    await client.connect(transport); const tools = (await client.listTools()).tools; assert.equal(tools.length, 18);
     assert(tools.some(t => t.name === 'lms_update_check'));
+    assert.equal(tools.find(t => t.name === 'lms_download_file')?.annotations?.readOnlyHint, false);
+    assert.equal(tools.find(t => t.name === 'lms_call')?.annotations?.readOnlyHint, true);
+    const localDenied = await client.callTool({ name: 'lms_call', arguments: { tool: 'canvas_download_file', args: {} } });
+    assert.equal(localDenied.isError, true); assert.match(JSON.stringify(localDenied), /LOCAL_FILE_TOOL/);
+    const batchDenied = await client.callTool({ name: 'lms_batch', arguments: { calls: [{ tool: 'canvas_download_file', args: {} }] } });
+    assert.equal(batchDenied.isError, true); assert.match(JSON.stringify(batchDenied), /LOCAL_FILE_TOOL/);
+
     assert(tools.some(t => t.name === 'lms_profile_add'));
     const search = await client.callTool({ name: 'lms_school_search', arguments: { query: '理大', offline: true } });
     assert.equal(search.isError, false);

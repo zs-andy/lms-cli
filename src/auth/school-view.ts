@@ -3,8 +3,9 @@ import { fileURLToPath } from 'node:url';
 
 /** Trusted local controls stay outside the school's DOM and scripting world. */
 export const LOGIN_TOOLBAR_HEIGHT = 120;
-export function attachSchoolPage(window: BrowserWindow, session: Session) {
+export function attachSchoolPage(window: BrowserWindow, session: Session, backgroundLogin = false) {
   const view = new WebContentsView({ webPreferences: {
+    disableDialogs: backgroundLogin, backgroundThrottling: !backgroundLogin,
     session, preload: fileURLToPath(new URL('./login-preload.cjs', import.meta.url)),
     nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true,
   } });

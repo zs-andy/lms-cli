@@ -12,6 +12,9 @@ const arg = (name: string) => { const i = process.argv.indexOf(name); return i >
 const fromCLI = process.argv.includes('--from-cli');
 const fromProfile = arg('--profile');
 const directLogin = fromCLI && Boolean(fromProfile);
+// Opt-in for unattended CLI/MCP runs; never silently enables password consent.
+const backgroundLogin = directLogin && (process.env.LMS_AUTH_BACKGROUND === '1' || process.argv.includes('--background'));
+if (backgroundLogin && process.platform === 'darwin') app.setActivationPolicy('prohibited');
 let currentPlatform: PlatformType | undefined;
 let loginUrl = '';
 let optionsPending: Promise<void> = Promise.resolve();
@@ -61,7 +64,7 @@ function harden(contents: WebContents, context: LoginContext) {
   });
   contents.setWindowOpenHandler(({ url }) => {
     if (!allowedNavigation(url)) return { action: 'deny' };
-    return { action: 'allow', overrideBrowserWindowOptions: { parent: controller, webPreferences: { session: contents.session, preload: fileURLToPath(new URL('./login-preload.cjs', import.meta.url)), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } } };
+    return { action: 'allow', overrideBrowserWindowOptions: { parent: controller, ...(backgroundLogin ? { show: false, focusable: false } : {}), webPreferences: { disableDialogs: backgroundLogin, backgroundThrottling: !backgroundLogin, session: contents.session, preload: fileURLToPath(new URL('./login-preload.cjs', import.meta.url)), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true } } };
   });
   contents.on('did-create-window', child => { context.windows.add(child); child.on('closed', () => context.windows.delete(child)); harden(child.webContents, context); });
 }
@@ -80,7 +83,7 @@ async function authorize(p: Profile, platform: PlatformType, ephemeral: Electron
   await new Promise<void>((resolve, reject) => {
     controller.setTitle(`lms-cli · ${p.label}`);
     controller.setContentSize(1040, 780);
-    const school = attachSchoolPage(controller, ephemeral);
+    const school = attachSchoolPage(controller, ephemeral, backgroundLogin);
     const contents = school.contents;
     harden(contents, context); let done = false; let validating = false; let lastHeader = ''; let lastProbe = 0;
     const finish = (error?: Error) => { if (done) return; done = true; clearInterval(timer); signal.removeEventListener('abort', cancelled); context.cancel(); school.close(); for (const child of [...context.windows]) if (!child.isDestroyed()) child.destroy(); error ? reject(error) : resolve(); };
@@ -149,10 +152,12 @@ async function start(profileId: string, selection: string) {
     if (selected.some(s => !p[s])) throw new Error('Platform missing');
     abort.signal.throwIfAborted();
     activeLogin = { profile: p, platforms: selected, automationStopped: false };
+    let completed = 0;
     for (const platform of selected) {
       abort.signal.throwIfAborted();
       currentPlatform = platform; loginUrl = p[platform]!;
       const pref = preferences[p.id]?.[platform];
+      if (backgroundLogin && !(pref?.rememberPassword && pref.autoLogin && pref.hasPassword)) continue;
       message = pref?.autoLogin && pref.hasPassword ? '正在准备自动登录，可取消或关闭自动登录' : '请在下方学校页面登录';
       if (!pref?.rememberPassword) await clearPersistentPartition(p.id, platform);
       // Use the stable partition during the attempt so enabling remember-
@@ -163,9 +168,12 @@ async function start(profileId: string, selection: string) {
       store.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
       store.setPermissionCheckHandler(() => false);
       store.on('will-download', event => event.preventDefault());
-      await push(); await authorize(p, platform, store, abort.signal);
+      await push();
+      const signal = backgroundLogin ? AbortSignal.any([abort.signal, AbortSignal.timeout(45_000)]) : abort.signal;
+      try { await authorize(p, platform, store, signal); completed++; }
+      catch (error) { if (!backgroundLogin || abort.signal.aborted) throw error; }
     }
-    success = true;
+    success = completed === selected.length;
   } catch { message = abort?.signal.aborted ? '已取消本次登录。' : '登录未完成，请重试。'; }
   finally {
     clearTimeout(timeout); abort?.abort(); activeLogin = undefined; currentPlatform = undefined; loginUrl = '';
@@ -190,7 +198,7 @@ async function boot() {
     try { (preferences[p.id] ??= {})[platform] = loginSummary(await loginStore.read(p, platform), await loginStore.readTotp(p, platform)); }
     catch { message = '无法读取已保存的登录选项，请检查系统凭据库。'; }
   }
-  controller = new BrowserWindow({ show: false, width: directLogin ? 1040 : 480, height: directLogin ? 780 : 460, minWidth: 420, minHeight: 320, useContentSize: true, title: 'lms-cli', webPreferences: { preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)), nodeIntegration: false, contextIsolation: true, sandbox: true } });
+  controller = new BrowserWindow({ show: false, focusable: !backgroundLogin, width: directLogin ? 1040 : 480, height: directLogin ? 780 : 460, minWidth: 420, minHeight: 320, useContentSize: true, title: 'lms-cli', webPreferences: { disableDialogs: backgroundLogin, backgroundThrottling: !backgroundLogin, preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)), nodeIntegration: false, contextIsolation: true, sandbox: true } });
   controller.center();
   controller.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   controller.webContents.on('will-navigate', e => e.preventDefault());
@@ -295,10 +303,11 @@ async function boot() {
     return sender?.context.canSubmitOtp(sender.page, form) ?? false;
   });
   await controller.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(authorizationHTML())}`);
-  controller.show(); controller.focus(); controller.moveTop();
+  if (!backgroundLogin) { controller.show(); controller.focus(); controller.moveTop(); }
   const initial = config.profiles.find(p => p.id === (fromProfile ?? config.active));
   const selection = fromProfile ? arg('--platform') ?? 'all' : 'all';
   const selected = initial ? (selection === 'all' ? platforms(initial) : [Platform.parse(selection)]) : [];
+  if (!initial && backgroundLogin) { app.exit(2); return; }
   if (initial && (fromProfile || canRestoreLogin(selected, preferences[initial.id])))
     void start(initial.id, selection).catch(() => { message = '未能打开已保存的登录，请点击开始登录重试。'; void push(); });
 }

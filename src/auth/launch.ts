@@ -38,6 +38,8 @@ export async function authStatus(p: Profile) {
 
 function authCommand(profile: Profile, platform: Platform | undefined) {
   const args = ['--profile', profile.id, '--platform', platform ?? 'all', '--from-cli'];
+  const background = process.env.LMS_AUTH_BACKGROUND === '1';
+  if (background) args.push('--background');
   const configured = process.env.LMS_AUTH_APP;
   const macCandidates = [
     join(homedir(), 'Applications', 'lms-cli.app'),
@@ -64,7 +66,7 @@ function authCommand(profile: Profile, platform: Platform | undefined) {
   // macOS must go through `open -na`: launching the inner executable directly
   // can leave an invisible app process and does not reliably present a window.
   if (process.platform === 'darwin' && candidate?.endsWith('.app')) {
-    return { command: '/usr/bin/open', args: ['-W', '-na', candidate, '--args', ...args] };
+    return { command: '/usr/bin/open', args: ['-W', ...(background ? ['-g', '-j'] : []), '-na', candidate, '--args', ...args] };
   }
   if (candidate) return { command: candidate, args };
 
@@ -74,7 +76,7 @@ function authCommand(profile: Profile, platform: Platform | undefined) {
 export function startLogin(p: Profile, platform?: Platform) {
   if (platform && !p[platform]) throw new LmsError('NOT_CONFIGURED', 'That platform is not configured.');
   const existing = [...jobs.values()].find(j => j.profile === p.id && j.state === 'running');
-  if (existing) return { id: existing.id, state: existing.state, profile: existing.profile, platforms: existing.platforms, note: 'An authorization window is already open. Finish it first.' };
+  if (existing) return { id: existing.id, state: existing.state, profile: existing.profile, platforms: existing.platforms, note: 'An authorization attempt is already running. Wait for it to finish.' };
 
   const selected = platform ? [platform] : platforms(p);
   if (!selected.length) throw new LmsError('NOT_CONFIGURED', 'No LMS platform is configured for this profile.');
@@ -84,7 +86,7 @@ export function startLogin(p: Profile, platform?: Platform) {
   try {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
-    child = spawn(launch.command, launch.args, { env, stdio: ['ignore', 'ignore', 'ignore'], windowsHide: false });
+    child = spawn(launch.command, launch.args, { env, stdio: ['ignore', 'ignore', 'ignore'], windowsHide: process.env.LMS_AUTH_BACKGROUND === '1' });
   } catch {
     throw new LmsError('AUTH_APP_START_FAILED', 'The authorization app could not be started.', 'Check that the installed app is executable and try again.');
   }
@@ -106,7 +108,9 @@ export function startLogin(p: Profile, platform?: Platform) {
     state: job.state,
     profile: p.id,
     platforms: selected,
-    note: 'The authorization app restores saved login preferences: remember-password fills only; automatic login fills and submits once. Complete any remaining school verification there. Cancel with Esc or the cancel button. No password/Cookie copying is needed; completion requires locally verified encrypted credentials.',
+    note: process.env.LMS_AUTH_BACKGROUND === '1'
+      ? 'Background authorization is running without visible windows. Existing automatic-login consent is required. Missing consent, MFA, unsupported forms or timeouts do not open a window; unsuccessful authorization is reported as cancelled. Wait, then retry the read. To repair login interactively, run lms auth login with LMS_AUTH_BACKGROUND unset.'
+      : 'The authorization app restores saved login preferences: remember-password fills only; automatic login fills and submits once. Complete any remaining school verification there. Cancel with Esc or the cancel button. No password/Cookie copying is needed; completion requires locally verified encrypted credentials.',
   };
 }
 

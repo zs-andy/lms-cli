@@ -1,0 +1,36 @@
+name: School / LMS Support Request
+description: Request a new school preset or LMS platform integration (e.g., Moodle, Brightspace)
+labels: ["enhancement", "school-support"]
+body:
+  - type: input
+    id: school_name
+    attributes:
+      label: School or LMS platform name
+      placeholder: "e.g., University of X / Moodle"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform type
+      options:
+        - Canvas
+        - Blackboard Learn Ultra
+        - Moodle
+        - Brightspace (D2L)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Public LMS base URL
+      description: Only provide the public sign-in/root HTTPS URL (never personal URLs or tokens).
+      placeholder: "https://learn.example.edu"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Authentication & notes
+      description: SSO provider (e.g., Microsoft ADFS, Okta, Shibboleth), MFA flow, or whether you can help test a PR.

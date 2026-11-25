@@ -138,12 +138,13 @@ program.command('download <file-id>').description('Save one original Canvas file
   .option('--on-conflict <mode>', 'rename or error', 'rename')
   .action(async (fileId, options) => {
     const p = await getProfile(profileId());
+    if (!p.canvas) throw new LmsError('NOT_CONFIGURED', 'canvas is not configured in this profile.');
     const status = await authStatus(p);
     if (!status.platforms.find(s => s.platform === 'canvas')?.authorized) {
       return out({ ok: false, error: { code: 'AUTH_REQUIRED', message: 'Complete school login, then retry this download.' }, authorization: startLogin(p, 'canvas') });
     }
     const result = await withBackend(p.id, b => b.call(p, 'canvas_download_file', {
-      file_id: Number(fileId), directory: options.directory, filename: options.filename, on_conflict: options.onConflict,
+      file_id: Number(fileId), directory: options.directory, ...(options.filename ? { filename: options.filename } : {}), on_conflict: options.onConflict,
     }));
     if (result.error?.code === 'AUTH_REQUIRED') return out({ ...result, authorization: startLogin(p, 'canvas') });
     out(result);

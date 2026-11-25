@@ -95,8 +95,16 @@ test('invalid paths are rejected and server filenames cannot escape the selected
   await assert.rejects(saveCanvasFile({ ...options, directory: 'relative' }), /DOWNLOAD_INPUT/);
   await assert.rejects(saveCanvasFile({ ...options, filename: '../escape.pdf' }), /DOWNLOAD_FILENAME/);
   await assert.rejects(saveCanvasFile({ ...options, filename: '..\\escape.pdf' }), /DOWNLOAD_FILENAME/);
+  await assert.rejects(saveCanvasFile({ ...options, filename: '.' }), /DOWNLOAD_FILENAME/);
+  await assert.rejects(saveCanvasFile({ ...options, filename: '..' }), /DOWNLOAD_FILENAME/);
   const result = await saveCanvasFile({ ...options, filename: 'user:file.pdf' });
   assert.equal(result.filename, 'user_file.pdf');
+});
+
+test('missing download URL is rejected cleanly as forbidden', async t => {
+  const options = await fixture(t);
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ id: 42, display_name: 'lecture.pdf', size: pdf.length, url: null }));
+  await assert.rejects(saveCanvasFile(options), /403/);
 });
 
 test('redirected CDN downloads do not receive Canvas credentials; login redirects require auth', async t => {

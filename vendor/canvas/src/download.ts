@@ -27,11 +27,12 @@ export async function saveCanvasFile(options: DownloadOptions) {
   if (!Number.isSafeInteger(options.file_id) || options.file_id <= 0 || !isAbsolute(options.directory)) {
     throw new Error('DOWNLOAD_INPUT: A positive file ID and absolute directory are required.');
   }
-  if (options.filename && (basename(options.filename) !== options.filename || /[/\\]/.test(options.filename))) {
+  if (options.filename && (options.filename === '.' || options.filename === '..' || basename(options.filename) !== options.filename || /[/\\]/.test(options.filename))) {
     throw new Error('DOWNLOAD_FILENAME: Filename must not contain a directory.');
   }
   const meta = await canvasGet(`/files/${options.file_id}`);
   if (meta.locked_for_user || meta.hidden_for_user) throw new Error('403: Canvas has restricted this file.');
+  if (typeof meta.url !== 'string' || !meta.url) throw new Error('403: Canvas did not provide a download URL for this file.');
   const maxBytes = options.max_bytes ?? 512 * 1024 * 1024;
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 1024 * 1024 * 1024) throw new Error('DOWNLOAD_INPUT: Invalid byte limit.');
   if (meta.size > maxBytes) throw new Error('DOWNLOAD_LIMIT: File exceeds the configured byte limit.');

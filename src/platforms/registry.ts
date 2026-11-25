@@ -12,7 +12,7 @@ export const platformIds = platformDefinitions.map(p => p.id) as [PlatformId, ..
 export function createRegistry(definitions: readonly PlatformDefinition[]) {
   const byId = new Map<string, PlatformDefinition>();
   const byTool = new Map<string, PlatformDefinition>();
-  const reserved = new Set(['all', 'id', 'label', 'timezone', 'preset', 'profile', 'json', 'help', 'version', 'init', 'presets', 'profiles', 'auth', 'tools', 'call', 'overview', 'check', 'ask', 'mcp', 'mcp-config', 'items', 'doctor', 'setup', 'connect', 'update', 'schools', 'school', 'platform', 'offline', 'manual', 'constructor', 'prototype', '__proto__']);
+  const reserved = new Set(['all', 'id', 'label', 'timezone', 'preset', 'profile', 'json', 'help', 'version', 'init', 'presets', 'profiles', 'auth', 'tools', 'download', 'call', 'overview', 'check', 'ask', 'mcp', 'mcp-config', 'items', 'doctor', 'setup', 'connect', 'update', 'schools', 'school', 'platform', 'offline', 'manual', 'constructor', 'prototype', '__proto__']);
   for (const definition of definitions) {
     const fail = (reason: string): never => { throw new Error(`Invalid platform ${definition.id}: ${reason}`); };
     if (!/^[a-z][a-z0-9]*$/.test(definition.id) || reserved.has(definition.id) || byId.has(definition.id)) fail('invalid, reserved or duplicate ID');

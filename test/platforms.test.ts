@@ -45,9 +45,11 @@ test('contribution mistakes fail closed: duplicates, reserved IDs, bad aliases a
   const invalid: PlatformDefinition[] = [
     { ...example, id: 'canvas' },
     { ...example, id: 'profiles' },
+    { ...example, id: 'download' },
     { ...example, id: 'some-platform' },
     { ...example, readTools: ['canvas_list_courses'] },
     { ...example, readTools: ['example_courses', 'example_courses'] },
+    { ...example, localFileTools: ['example_download'], aliases: { download: 'example_download' } },
     { ...example, aliases: { write: 'example_submit' } },
     { ...example, probes: { ...example.probes, identity: { tool: 'example_unknown' } } },
     { ...example, environmentPrefixes: ['LMS_'] },

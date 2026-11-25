@@ -1,0 +1,45 @@
+name: Community automation
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  label-pr:
+    name: Auto-label pull request
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yml
+          sync-labels: false
+
+  welcome:
+    name: Welcome first-time contributor
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            感谢你向 **lms-cli** 提交首个 Issue！/ Thanks for opening your first issue in **lms-cli**!
+
+            - 维护者会尽快查看并回复。如果是学校使用体验或常见问题，也欢迎在 [Discussions](https://github.com/zs-andy/lms-cli/discussions) 与其他同学交流。
+            - **安全提醒 / Security reminder**: 请勿在公开 Issue 或日志中包含真实的学校密码、Cookie、API Token、成绩或私人课程资料（安全漏洞请通过 [Private Vulnerability Reporting](https://github.com/zs-andy/lms-cli/security/advisories/new) 私密反馈）。
+          pr-message: |
+            欢迎加入 **lms-cli** 贡献者社区，感谢你的首个 Pull Request！/ Welcome to the **lms-cli** community and thanks for your first pull request!
+
+            - 请确认本地已通过 `npm run check:repo`、`npm run typecheck` 和 `npm test`（使用离线合成数据，不包含真实学校凭据或个人路径）。
+            - 外部 Fork 的首个 PR 会在维护者确认后触发跨平台 CI（Ubuntu / macOS / Windows）。完整指南见 [CONTRIBUTING.md](https://github.com/zs-andy/lms-cli/blob/main/CONTRIBUTING.md)。

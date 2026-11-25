@@ -15,6 +15,8 @@
   "files": ["bin", "dist", "plugins/lms-cli", "scripts/launchers", "docs", "vendor/*/LICENSE", "README.md", "PRIVACY.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md", "LICENSE"],
   "scripts": {
     "build": "node scripts/build.mjs",
+    "check:repo": "node scripts/check-repo.mjs",
+    "release:bump": "node scripts/bump-version.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --import tsx --test test/*.test.ts",
     "start": "node bin/lms.js",

@@ -1,0 +1,41 @@
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+    authors:
+      - dependabot
+  categories:
+    - title: Features & Platforms
+      labels:
+        - enhancement
+        - platform:new
+        - platform:canvas
+        - platform:blackboard
+    - title: Schools & Compatibility
+      labels:
+        - school-preset
+        - school-compatibility
+    - title: Authentication & Security
+      labels:
+        - area:auth
+        - security
+    - title: Bug Fixes
+      labels:
+        - bug
+    - title: CLI, MCP & Agent Plugins
+      labels:
+        - area:cli
+        - area:mcp
+        - area:plugins
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Maintenance & Dependencies
+      labels:
+        - area:ci
+        - dependencies
+    - title: Other Changes
+      labels:
+        - "*"

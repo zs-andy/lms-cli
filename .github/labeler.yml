@@ -1,0 +1,78 @@
+"platform:canvas":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/platforms/canvas/**"
+          - "vendor/canvas/**"
+          - "test/*canvas*"
+
+"platform:blackboard":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/platforms/blackboard/**"
+          - "vendor/blackboard/**"
+          - "test/*blackboard*"
+
+"area:auth":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/auth/**"
+          - "src/vault.ts"
+          - "scripts/verify-*auth*.mjs"
+          - "scripts/verify-*preload*.mjs"
+          - "test/*auth*"
+          - "test/*login*"
+          - "test/*totp*"
+
+"area:mcp":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/mcp.ts"
+          - "src/backend.ts"
+          - "src/policy.ts"
+          - "src/worker.ts"
+          - "src/adapter.ts"
+
+"area:cli":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "bin/**"
+          - "src/cli.ts"
+          - "src/setup.ts"
+          - "src/updates.ts"
+          - "src/upgrade.ts"
+          - "src/runtime.ts"
+          - "install.sh"
+          - "install.ps1"
+
+"area:plugins":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "plugins/**"
+          - ".agents/**"
+          - ".claude-plugin/**"
+          - "src/codex.ts"
+
+"school-preset":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/schools.ts"
+          - "src/school-selection.ts"
+          - "docs/SCHOOLS.md"
+          - "docs/COMPATIBILITY.md"
+
+"area:ci":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - "scripts/**"
+
+"documentation":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+
+"dependencies":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "package.json"
+          - "package-lock.json"

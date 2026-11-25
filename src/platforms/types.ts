@@ -52,6 +52,8 @@ export interface PlatformDefinition {
   environmentPrefixes: readonly string[];
   /** Exact names only. MCP readOnlyHint and name prefixes do not grant permission. */
   readTools: readonly string[];
+  /** Reviewed remote reads that save local files; never available through read-only MCP calls. */
+  localFileTools?: readonly string[];
   aliases: Readonly<Record<string, string>>;
   courseArgument: { name: string; type: 'number' | 'string' };
   login: {

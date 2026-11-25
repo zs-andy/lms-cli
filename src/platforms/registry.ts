@@ -12,7 +12,7 @@ export const platformIds = platformDefinitions.map(p => p.id) as [PlatformId, ..
 export function createRegistry(definitions: readonly PlatformDefinition[]) {
   const byId = new Map<string, PlatformDefinition>();
   const byTool = new Map<string, PlatformDefinition>();
-  const reserved = new Set(['all', 'id', 'label', 'timezone', 'preset', 'profile', 'json', 'help', 'version', 'init', 'presets', 'profiles', 'auth', 'tools', 'call', 'overview', 'check', 'ask', 'mcp', 'mcp-config', 'items', 'doctor', 'setup', 'connect', 'update', 'schools', 'school', 'platform', 'offline', 'manual', 'constructor', 'prototype', '__proto__']);
+  const reserved = new Set(['all', 'id', 'label', 'timezone', 'preset', 'profile', 'json', 'help', 'version', 'init', 'presets', 'profiles', 'auth', 'tools', 'download', 'call', 'overview', 'check', 'ask', 'mcp', 'mcp-config', 'items', 'doctor', 'setup', 'connect', 'update', 'schools', 'school', 'platform', 'offline', 'manual', 'constructor', 'prototype', '__proto__']);
   for (const definition of definitions) {
     const fail = (reason: string): never => { throw new Error(`Invalid platform ${definition.id}: ${reason}`); };
     if (!/^[a-z][a-z0-9]*$/.test(definition.id) || reserved.has(definition.id) || byId.has(definition.id)) fail('invalid, reserved or duplicate ID');
@@ -21,7 +21,7 @@ export function createRegistry(definitions: readonly PlatformDefinition[]) {
     if (definition.login.cookieNames.global || definition.login.cookieNames.sticky || !definition.login.sessionCookieNames.length || definition.login.sessionCookieNames.some(name => !definition.login.cookieNames.test(name))) fail('invalid cookie policy');
     if (!definition.login.probePath.startsWith('/') || definition.login.probePath.startsWith('//')) fail('probePath must be a relative API path');
     if (!definition.readTools.length) fail('at least one reviewed read tool is required');
-    for (const name of definition.readTools) {
+    for (const name of [...definition.readTools, ...(definition.localFileTools ?? [])]) {
       if (!/^[a-z][a-z0-9_]*$/.test(name) || byTool.has(name)) fail(`invalid or duplicate tool ${name}`);
       byTool.set(name, definition);
     }
@@ -41,6 +41,9 @@ export function getPlatform(id: string): PlatformDefinition {
 }
 export function toolPlatform(name: string): PlatformId | undefined {
   return registry.byTool.get(name)?.id as PlatformId | undefined;
+}
+export function isLocalFileTool(name: string): boolean {
+  return registry.byTool.get(name)?.localFileTools?.includes(name) ?? false;
 }
 export function isPlatformEnvironment(key: string): boolean {
   return platformDefinitions.some(p => p.environmentPrefixes.some(prefix => key.startsWith(prefix)));

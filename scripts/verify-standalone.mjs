@@ -67,7 +67,7 @@ try {
   try {
     await client.connect(new StdioClientTransport({ ...config, env: { ...env, ...config.env }, stderr: 'pipe' }));
     const tools = (await client.listTools()).tools;
-    assert.equal(tools.length, 17); assert(tools.some(t => t.name === 'lms_update_check'));
+    assert.equal(tools.length, 18); assert(tools.some(t => t.name === 'lms_update_check')); assert(tools.some(t => t.name === 'lms_download_file'));
     const search = await client.callTool({ name: 'lms_school_search', arguments: { query: '理大', offline: true } });
     assert.equal(search.isError, false); assert(JSON.parse(search.content[0].text).matches.length > 0);
     const result = await client.callTool({ name: 'lms_profiles', arguments: {} }); assert.equal(result.isError, false);

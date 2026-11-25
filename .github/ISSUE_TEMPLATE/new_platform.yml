@@ -1,0 +1,45 @@
+name: "New LMS Platform / 新增教学平台接入"
+description: "Propose or coordinate adding a new LMS adapter (Moodle, Brightspace/D2L, Sakai, Gradescope, etc.) / 申请或共建新平台适配器"
+title: "[Platform]: "
+labels: ["platform:new", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        在提交前建议阅读 [平台接入指南](https://github.com/zs-andy/lms-cli/blob/main/docs/ADDING_A_PLATFORM.md) 和 [架构说明](https://github.com/zs-andy/lms-cli/blob/main/docs/ARCHITECTURE.md)。
+        Please review [docs/ADDING_A_PLATFORM.md](https://github.com/zs-andy/lms-cli/blob/main/docs/ADDING_A_PLATFORM.md) and [docs/ARCHITECTURE.md](https://github.com/zs-andy/lms-cli/blob/main/docs/ARCHITECTURE.md) before proposing a new platform adapter.
+
+  - type: input
+    id: platform_name
+    attributes:
+      label: "LMS platform name / 目标教学平台"
+      placeholder: "e.g. Moodle, Brightspace (D2L), Sakai, Gradescope"
+    validations:
+      required: true
+
+  - type: textarea
+    id: upstream
+    attributes:
+      label: "Upstream MCP / API reference & license / 上游项目或 API 说明"
+      description: "Link to an open-source MCP server or REST API documentation, license (MIT/Apache-2.0/etc.), and supported deployment versions."
+    validations:
+      required: true
+
+  - type: textarea
+    id: auth_and_readonly
+    attributes:
+      label: "Authentication & read-only scope / 认证方式与只读边界"
+      description: "How does authentication work (browser session cookies, personal token, OAuth)? Which read-only endpoints exist (courses, announcements, assignments, files, grades)?"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willing_to_contribute
+    attributes:
+      label: "Are you willing to help build or test this adapter? / 是否愿意参与开发或实测？"
+      options:
+        - Yes, I can implement a PR following docs/ADDING_A_PLATFORM.md
+        - Yes, I have access to a school instance and can help test
+        - No, just voting / requesting support
+    validations:
+      required: true

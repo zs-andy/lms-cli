@@ -1,1 +1,11 @@
 blank_issues_enabled: true
+contact_links:
+  - name: "💬 Q&A & Usage Help / 使用问答与交流"
+    url: https://github.com/zs-andy/lms-cli/discussions/categories/q-a
+    about: Ask questions about setup, MCP clients, Codex, Claude Code, or school configuration.
+  - name: "🏫 School Compatibility Roll Call / 学校兼容性打卡"
+    url: https://github.com/zs-andy/lms-cli/discussions
+    about: Share whether Canvas or Blackboard works at your university and browse community reports.
+  - name: "🔒 Report a Security Vulnerability / 私密报告安全漏洞"
+    url: https://github.com/zs-andy/lms-cli/security/advisories/new
+    about: Never open a public issue for security flaws, credentials, or student data. Use private reporting.

@@ -7,11 +7,12 @@
 **面向 Canvas 和 Blackboard 的多学校命令行工具与只读 MCP 服务。**
 
 [![CI](https://github.com/zs-andy/lms-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/zs-andy/lms-cli/actions/workflows/ci.yml)
+[![Security & CodeQL](https://github.com/zs-andy/lms-cli/actions/workflows/security.yml/badge.svg)](https://github.com/zs-andy/lms-cli/actions/workflows/security.yml)
 [![Release](https://img.shields.io/github/v/release/zs-andy/lms-cli?color=2563EB)](https://github.com/zs-andy/lms-cli/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933.svg)](package.json)
 
-[English](README.md) | **简体中文**
+[English](README.md) | **简体中文** · [学校兼容性](docs/COMPATIBILITY.md) · [路线图](docs/ROADMAP.md) · [社区讨论](https://github.com/zs-andy/lms-cli/discussions)
 
 </div>
 
@@ -120,16 +121,17 @@ lms update --rollback   # 确认后回退到上一版本
 
 会话和本地待办加密保存在本机，密钥由系统凭据库管理。Agent 查询所需的内容会交给所选客户端处理；下载文件和导出的日历为普通文件。详见[隐私说明](PRIVACY.md)与[安全说明](SECURITY.md)。
 
-## 文档
+## 文档与社区
 
 用户：
 
-- [用户指南](docs/USER_GUIDE.md)：安装、授权、查询、更新、故障排查。
-- [学校与账号](docs/SCHOOLS.md)：联网搜索、手动接入、多学校与多账号。
+- [用户指南](docs/USER_GUIDE.md)：安装、授权、查询、Canvas 原始文件下载、更新与故障排查。
+- [学校与账号](docs/SCHOOLS.md) & [学校兼容性矩阵](docs/COMPATIBILITY.md)：联网搜索、手动接入、多学校与社区实测。
 - [安装选项](docs/CLI_INSTALL.md)：安装目录、离线安装及运行时布局。
 
-开发者：
+开发者与社区：
 
+- [社区讨论 (Discussions)](https://github.com/zs-andy/lms-cli/discussions) · [路线图](docs/ROADMAP.md) · [更新日志](CHANGELOG.md) · [行为准则](CODE_OF_CONDUCT.md)。
 - [开发指南](docs/DEVELOPMENT.md)：源码构建、测试、MCP 与学校目录扩展。
 - [架构说明](docs/ARCHITECTURE.md)与[平台接入指南](docs/ADDING_A_PLATFORM.md)。
 - [贡献指南](CONTRIBUTING.md)、[验收清单](docs/ACCEPTANCE.md)、[验证记录](docs/VALIDATION.md)和[发布流程](docs/RELEASING.md)。

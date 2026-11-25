@@ -38,3 +38,10 @@ body:
     attributes:
       label: Logs or screenshots
       description: Please redact any personal data, tokens, cookies, or API keys.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy & security checklist
+      options:
+        - label: I confirmed this report contains NO real passwords, cookies, API tokens, student IDs, or private course materials.
+          required: true

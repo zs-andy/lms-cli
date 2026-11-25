@@ -8,8 +8,8 @@ npm tarball 面向已有 Node.js 的环境；独立授权 App 是可选分发项
 
 ## 发布前检查
 
-1. 对齐 `package.json`、`package-lock.json`、`src/version.ts`、插件 manifest 与版本标签。稳定版标签使用 `vX.Y.Z`，不带本地缓存后缀。
-2. 更新用户文档、隐私说明、验证记录和第三方许可证。平台扩展遵循 [ADDING_A_PLATFORM.md](ADDING_A_PLATFORM.md)。
+1. 运行 `npm run release:bump <X.Y.Z>` 自动对齐 `package.json`、`package-lock.json`、`src/version.ts` 与 Codex / Claude Code 插件 manifest，并用 `npm run check:repo` 校验版本一致性与相对链接。稳定版标签使用 `vX.Y.Z`，不带本地缓存后缀。
+2. 更新 `CHANGELOG.md`、可选的 `docs/releases/vX.Y.Z.md`、用户文档、隐私说明、验证记录和第三方许可证。平台扩展遵循 [ADDING_A_PLATFORM.md](ADDING_A_PLATFORM.md)。
 3. 检查版本控制和打包清单，排除账号、凭据、学校文件、个人路径、日志、`.env` 和备份。
 4. 在目标系统运行以下构建与验收命令，并按 [ACCEPTANCE.md](ACCEPTANCE.md) 检查学校授权和查询。
 5. 核对签名、公证及系统信任策略。分发说明应明确签名状态；不要要求用户关闭系统安全保护。
@@ -69,13 +69,19 @@ npm run pack:standalone
 
 ## CI 与 Release
 
-`.github/workflows/ci.yml` 在 Ubuntu、macOS 和 Windows 上完成测试、自包含构建、隔离安装验收及授权 App 构建。工作流实际运行的架构决定产物架构；额外架构需对应 runner 和验收记录。
+`.github/workflows/ci.yml` 在 Ubuntu、macOS 和 Windows 上完成仓库一致性检查、测试、macOS 离线认证 UI 验证、自包含构建、隔离安装验收及授权 App 构建。工作流实际运行的架构决定产物架构；额外架构需对应 runner 和验收记录。
 
-发布步骤：
+自动草稿发布（推荐）：
+
+1. 运行 `npm run release:bump <X.Y.Z>` 同步版本号，更新 `CHANGELOG.md`（可选编写 `docs/releases/vX.Y.Z.md`），提交并合并至 `main`。
+2. 推送版本标签 `vX.Y.Z`（或手动触发 `Prepare draft release` 工作流 `.github/workflows/release.yml`）。工作流会自动校验标签与 manifest 一致性，在 Ubuntu / macOS / Windows 上完成全量测试与打包，生成 `SHA256SUMS.txt`，并创建带分类说明的 **Draft Release**（绝不自动公开）。
+3. 若需替换或追加本地签名/公证的 macOS 安装包，在发布前于 Draft Release 中替换并重新生成 `SHA256SUMS.txt`，随后在隔离环境验收并手动点击发布。
+
+手动附加已有 CI 产物（备选）：
 
 1. 确定通过 CI 的源提交，为其创建版本标签及 draft Release。
-2. 运行 `Attach verified installers`，提供标签和成功的 CI run ID。工作流核验源文件与标签一致，只向 draft Release 添加附件，不覆盖已有文件。
-3. 检查每个声明支持的系统和架构都有对应 CLI 包；将实际附件的 SHA-256 汇总到 `SHA256SUMS.txt`，条目使用准确文件名。
+2. 运行 `Attach verified installers`（`.github/workflows/publish-installers.yml`），提供标签和成功的 CI run ID。工作流核验源文件与标签一致，只向 draft Release 添加附件，不覆盖已有文件。
+3. 检查每个声明支持的系统和架构都有对应 CLI 包；核对 `SHA256SUMS.txt` 条目与文件名一致。
 4. 在隔离环境用 draft 产物离线安装，核对版本、首次配置、重复安装、取消、失败恢复和更新数据保留。
 5. 完成维护者验收后发布 Release，并检查公开下载、校验和、安装命令及更新提示。记录操作系统、架构、版本、签名状态和学校实测范围。
 

@@ -7,11 +7,12 @@
 **Multi-school Canvas & Blackboard CLI and read-only MCP server for Codex, Claude Code, and terminal workflows.**
 
 [![CI](https://github.com/zs-andy/lms-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/zs-andy/lms-cli/actions/workflows/ci.yml)
+[![Security & CodeQL](https://github.com/zs-andy/lms-cli/actions/workflows/security.yml/badge.svg)](https://github.com/zs-andy/lms-cli/actions/workflows/security.yml)
 [![Release](https://img.shields.io/github/v/release/zs-andy/lms-cli?color=2563EB)](https://github.com/zs-andy/lms-cli/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/Node.js-22%2B-339933.svg)](package.json)
 
-**English** | [简体中文](README.zh-CN.md)
+**English** | [简体中文](README.zh-CN.md) · [Compatibility](docs/COMPATIBILITY.md) · [Roadmap](docs/ROADMAP.md) · [Discussions](https://github.com/zs-andy/lms-cli/discussions)
 
 </div>
 
@@ -82,12 +83,13 @@ lms setup --no-codex             # Standalone CLI without Codex plugin
 lms setup --no-login             # Local profile setup only
 ```
 
-### 3. Query Courses & Deadlines
+### 3. Query Courses, Deadlines & Files
 
 ```sh
 lms canvas courses
 lms blackboard courses
 lms overview --days 7 --fresh
+lms download <file-id> --directory /absolute/destination
 ```
 
 ### Use with Claude Code
@@ -105,7 +107,7 @@ Or register the MCP server directly (do not enable both at once):
 claude mcp add --scope user lms -- lms mcp
 ```
 
-Read-only `lms` tools carry MCP read-only annotations; local configuration/login tools (`lms_profile_add`, `lms_profile_use`, `lms_auth_login`, `lms_items_upsert`) should remain confirmation-gated.
+Read-only `lms` tools carry MCP read-only annotations; local configuration/login/download tools (`lms_profile_add`, `lms_profile_use`, `lms_auth_login`, `lms_items_upsert`, `lms_download_file`) should remain confirmation-gated.
 
 ### Updates
 
@@ -123,26 +125,27 @@ When re-authentication is needed, `lms-cli` always opens your school's genuine S
 
 ## Documentation
 
-- **Users**: [User Guide](docs/USER_GUIDE.md) · [Schools & Multi-Account Setup](docs/SCHOOLS.md) · [Install Options](docs/CLI_INSTALL.md) · [Privacy](PRIVACY.md) · [Security](SECURITY.md)
-- **Contributors**: [Contributing Guide](CONTRIBUTING.md) · [Development Guide](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md) · [Adding a New LMS Platform](docs/ADDING_A_PLATFORM.md) · [Releasing](docs/RELEASING.md)
+- **Users**: [User Guide](docs/USER_GUIDE.md) · [Schools & Multi-Account Setup](docs/SCHOOLS.md) · [School Compatibility Matrix](docs/COMPATIBILITY.md) · [Install Options](docs/CLI_INSTALL.md) · [Privacy](PRIVACY.md) · [Security](SECURITY.md)
+- **Contributors**: [Contributing Guide](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Roadmap](docs/ROADMAP.md) · [Changelog](CHANGELOG.md) · [Development Guide](docs/DEVELOPMENT.md) · [Architecture](docs/ARCHITECTURE.md) · [Adding a New LMS Platform](docs/ADDING_A_PLATFORM.md) · [Releasing](docs/RELEASING.md)
 
 ## Contributing
 
 Contributions are very welcome! Great places to jump in:
 
+- **Report your university's compatibility** in [Discussions](https://github.com/zs-andy/lms-cli/discussions) or [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md), or add verified school presets.
+- **Pick up starter issues** labeled [`good first issue`](https://github.com/zs-andy/lms-cli/labels/good%20first%20issue) or [`help wanted`](https://github.com/zs-andy/lms-cli/labels/help%20wanted).
 - **Add a new LMS platform** (e.g., Moodle, Brightspace, Sakai) using the template in `src/platforms/_template/` and [docs/ADDING_A_PLATFORM.md](docs/ADDING_A_PLATFORM.md).
-- **Add or verify university presets** with public HTTPS URLs and tested login/API coverage.
 - **Improve cross-platform installers & tests** across macOS, Linux, and Windows.
 
-Run the offline test suite locally (no university account required):
+Run the offline check & test suite locally (no university account required):
 
 ```sh
 npm ci
 node node_modules/electron/install.js
-npm run typecheck && npm test
+npm run check:repo && npm run typecheck && npm test
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before opening a pull request.
 
 ## Disclaimer & License
 

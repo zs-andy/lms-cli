@@ -58,7 +58,7 @@ export function registerRawTools(server: McpServer): void {
           .optional()
           .describe('Default GET. Anything else needs writes enabled.'),
         query: z
-          .record(z.string())
+          .record(z.string(), z.string())
           .optional()
           .describe('Query parameters as a flat object.'),
         body: z.unknown().optional().describe('JSON request body for non-GET methods.'),

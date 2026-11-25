@@ -76,14 +76,14 @@ export function createMcp(backend = new Backend()) {
     const gate = await requireAuthorization(p, required); if (gate) return gate;
     return attachAuthorization(await backend.call(p, 'canvas_download_file', options), p, required);
   }));
-  server.registerTool('lms_call', { description: 'Call a reviewed read-only upstream tool using its exact schema. Before the first read, authorization is checked automatically and the isolated login app opens when needed. Returns source origin, fetch time, cache state, coverage and original response. 60-second in-memory cache; fresh bypasses it. No raw requests or remote writes.', inputSchema: { profile, tool: z.string(), args: z.record(z.unknown()).default({}), fresh: z.boolean().optional() }, annotations: readOnly }, safe(async a => {
+  server.registerTool('lms_call', { description: 'Call a reviewed read-only upstream tool using its exact schema. Before the first read, authorization is checked automatically and the isolated login app opens when needed. Returns source origin, fetch time, cache state, coverage and original response. 60-second in-memory cache; fresh bypasses it. No raw requests or remote writes.', inputSchema: { profile, tool: z.string(), args: z.record(z.string(), z.unknown()).default({}), fresh: z.boolean().optional() }, annotations: readOnly }, safe(async a => {
     const p = await getProfile(a.profile);
     if (isLocalFileTool(a.tool)) throw new LmsError('LOCAL_FILE_TOOL', 'Use lms_download_file to save original Canvas files; this read-only tool cannot write local files.');
     const required = [platformFor(a.tool)];
     const gate = await requireAuthorization(p, required); if (gate) return gate;
     return attachAuthorization(await backend.call(p, a.tool, a.args, a), p, required);
   }));
-  server.registerTool('lms_batch', { description: 'Run 1–8 independent read calls, at most 3 concurrently. Authorization is checked for all requested platforms first and the isolated login app opens when needed. Partial failure remains explicit. Discover schemas with lms_tools first.', inputSchema: { profile, calls: z.array(z.object({ tool: z.string(), args: z.record(z.unknown()).optional() })).min(1).max(8), fresh: z.boolean().optional() }, annotations: readOnly }, safe(async a => {
+  server.registerTool('lms_batch', { description: 'Run 1–8 independent read calls, at most 3 concurrently. Authorization is checked for all requested platforms first and the isolated login app opens when needed. Partial failure remains explicit. Discover schemas with lms_tools first.', inputSchema: { profile, calls: z.array(z.object({ tool: z.string(), args: z.record(z.string(), z.unknown()).optional() })).min(1).max(8), fresh: z.boolean().optional() }, annotations: readOnly }, safe(async a => {
     const p = await getProfile(a.profile);
     if (a.calls.some((call: { tool: string }) => isLocalFileTool(call.tool))) throw new LmsError('LOCAL_FILE_TOOL', 'Use lms_download_file for downloads; read-only batches cannot write local files.');
     const required = [...new Set(a.calls.map((call: { tool: string }) => platformFor(call.tool)))] as PlatformName[];

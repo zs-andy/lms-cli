@@ -9,6 +9,7 @@ import { isFreshAuthorization } from '../src/auth/launch.js';
 import { Vault, type KeyProvider } from '../src/vault.js';
 import { cookieHeader, allowedNavigation } from '../src/auth/cookies.js';
 import { isAllowed, platformFor } from '../src/policy.js';
+import { isLocalFileTool } from '../src/platforms/registry.js';
 import { publicError, LmsError } from '../src/errors.js';
 import { exportCalendar, listItems, upsertItems } from '../src/items.js';
 import { codexArguments } from '../src/ask.js';
@@ -93,8 +94,10 @@ test('cookie scoping excludes IdP, sibling host, expired and injected values', (
   for (const url of ['http://school.edu', 'file:///tmp/x', 'javascript:alert(1)', 'https://name:password@school.edu']) assert.equal(allowedNavigation(url), false);
 });
 test('remote writes, browser import and raw request escape hatches are denied', () => {
-  for (const name of ['bb_raw_request', 'bb_batch_request', 'bb_mark_reviewed', 'bb_submit_assignment', 'bb_start_quiz_attempt', 'bb_save_quiz_answer', 'bb_download_file', 'invented_tool']) { assert.equal(isAllowed(name), false); assert.throws(() => platformFor(name)); }
+  for (const name of ['bb_raw_request', 'bb_batch_request', 'bb_mark_reviewed', 'bb_submit_assignment', 'bb_start_quiz_attempt', 'bb_save_quiz_answer', 'bb_download_course_files', 'bb_download_submission', 'invented_tool']) { assert.equal(isAllowed(name), false); assert.throws(() => platformFor(name)); }
   assert.equal(platformFor('canvas_list_courses'), 'canvas'); assert.equal(platformFor('bb_announcements'), 'blackboard');
+  assert.equal(isLocalFileTool('canvas_download_file'), true); assert.equal(isLocalFileTool('bb_download_file'), true);
+  assert.equal(isLocalFileTool('bb_list_files'), false);
 });
 test('unknown error details never reach the client', () => {
   assert.equal(JSON.stringify(publicError(new Error('cookie=super-secret'))).includes('super-secret'), false);

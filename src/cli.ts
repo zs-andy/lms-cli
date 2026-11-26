@@ -135,20 +135,58 @@ auth.command('totp').description('Import an institution-provided TOTP seed priva
 auth.command('logout').requiredOption('--platform <name>', 'Remove authorization for this platform only').requiredOption('--yes', 'Confirm local credential removal; school session is not remotely revoked').action(async o => { const p = await getProfile(profileId()); const platform = Platform.parse(o.platform); await vault.remove(p, platform); out({ ok: true, profile: p.id, platform, locallySignedOut: true, remoteSessionRevoked: false }); });
 
 program.command('tools').description('Discover tools; pass --name to inspect its exact JSON schema').option('--platform <name>').option('--query <text>').option('--name <tool>').action(async o => out(await withBackend(profileId(), (b, p) => b.catalog(p, { ...o, platform: o.platform ? Platform.parse(o.platform) : undefined }))));
-program.command('download <file-id>').description('Save one original Canvas file locally without replacing existing files')
-  .requiredOption('--directory <path>', 'Absolute destination directory').option('--filename <name>', 'Optional filename')
+program.command('download <id>').description('Save one original Canvas or Blackboard file locally without replacing existing files')
+  .option('--platform <name>', 'canvas (default) or blackboard')
+  .option('--course <courseId>', 'Blackboard course ID (required when downloading from Blackboard)')
+  .option('--source-file <name>', 'Pick one file by filename substring when a Blackboard content item has several')
+  .requiredOption('--directory <path>', 'Absolute destination directory')
+  .option('--filename <name>', 'Optional destination filename (no directory separators)')
   .option('--on-conflict <mode>', 'rename or error', 'rename')
-  .action(async (fileId, options) => {
+  .option('--max-bytes <n>', 'Maximum download bytes (default 536870912, max 1073741824)')
+  .action(async (id, options) => {
     const p = await getProfile(profileId());
-    if (!p.canvas) throw new LmsError('NOT_CONFIGURED', 'canvas is not configured in this profile.');
-    const status = await authStatus(p);
-    if (!status.platforms.find(s => s.platform === 'canvas')?.authorized) {
-      return out({ ok: false, error: { code: 'AUTH_REQUIRED', message: 'Complete school login, then retry this download.' }, authorization: startLogin(p, 'canvas') });
+    const target = options.platform ? Platform.parse(options.platform) : (options.course || options.sourceFile ? 'blackboard' : 'canvas');
+    if (target !== 'canvas' && target !== 'blackboard') {
+      throw new LmsError('UNSUPPORTED_PLATFORM', `Original file downloads are not supported for ${target}.`);
     }
-    const result = await withBackend(p.id, b => b.call(p, 'canvas_download_file', {
-      file_id: Number(fileId), directory: options.directory, ...(options.filename ? { filename: options.filename } : {}), on_conflict: options.onConflict,
-    }));
-    if (result.error?.code === 'AUTH_REQUIRED') return out({ ...result, authorization: startLogin(p, 'canvas') });
+    if (!p[target]) throw new LmsError('NOT_CONFIGURED', `${target} is not configured in this profile.`);
+    const maxBytes = options.maxBytes !== undefined ? Number(options.maxBytes) : undefined;
+    if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 1024 * 1024 * 1024)) {
+      throw new LmsError('BAD_INPUT', '--max-bytes must be an integer between 1 and 1073741824.');
+    }
+    let tool: string;
+    let args: Record<string, unknown>;
+    if (target === 'canvas') {
+      if (options.course || options.sourceFile) throw new LmsError('BAD_INPUT', '--course and --source-file are only valid for Blackboard downloads.');
+      const numericId = Number(id);
+      if (!Number.isSafeInteger(numericId) || numericId <= 0) throw new LmsError('BAD_INPUT', 'Canvas downloads require a positive numeric file ID.');
+      tool = 'canvas_download_file';
+      args = {
+        file_id: numericId,
+        directory: options.directory,
+        ...(options.filename ? { filename: options.filename } : {}),
+        on_conflict: options.onConflict,
+        ...(maxBytes !== undefined ? { max_bytes: maxBytes } : {}),
+      };
+    } else {
+      if (!options.course) throw new LmsError('BAD_INPUT', 'Blackboard downloads require --course <courseId>.');
+      tool = 'bb_download_file';
+      args = {
+        courseId: options.course,
+        contentId: id,
+        directory: options.directory,
+        ...(options.sourceFile ? { source_file: options.sourceFile } : {}),
+        ...(options.filename ? { filename: options.filename } : {}),
+        on_conflict: options.onConflict,
+        ...(maxBytes !== undefined ? { max_bytes: maxBytes } : {}),
+      };
+    }
+    const status = await authStatus(p);
+    if (!status.platforms.find(s => s.platform === target)?.authorized) {
+      return out({ ok: false, error: { code: 'AUTH_REQUIRED', message: 'Complete school login, then retry this download.' }, authorization: startLogin(p, target) });
+    }
+    const result = await withBackend(p.id, b => b.call(p, tool, args));
+    if (result.error?.code === 'AUTH_REQUIRED') return out({ ...result, authorization: startLogin(p, target) });
     out(result);
   });
 program.command('call <tool>').description('Call an exact, reviewed upstream read tool').option('--args <json>', 'Arguments matching the tool schema', '{}').option('--fresh').action(async (tool, o) => out(await withBackend(profileId(), (b, p) => b.call(p, tool, parse(o.args), o))));

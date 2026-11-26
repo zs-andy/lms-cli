@@ -136,7 +136,7 @@ lms update --rollback   # 确认后回退到上一版本
 
 用户：
 
-- [用户指南](docs/USER_GUIDE.md)：安装、授权、查询、Canvas 原始文件下载、更新与故障排查。
+- [用户指南](docs/USER_GUIDE.md)：安装、授权、查询、Canvas / Blackboard 原始文件下载、更新与故障排查。
 - [学校与账号](docs/SCHOOLS.md) & [学校兼容性矩阵](docs/COMPATIBILITY.md)：联网搜索、手动接入、多学校与社区实测。
 - [安装选项](docs/CLI_INSTALL.md)：安装目录、离线安装及运行时布局。
 

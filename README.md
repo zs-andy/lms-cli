@@ -90,6 +90,7 @@ lms canvas courses
 lms blackboard courses
 lms overview --days 7 --fresh
 lms download <file-id> --directory /absolute/destination
+lms download <content-id> --platform blackboard --course <course-id> --directory /absolute/destination
 ```
 
 ### Use with Claude Code

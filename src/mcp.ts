@@ -12,6 +12,7 @@ import { checkForUpdates, sessionUpdate } from './updates.js';
 import { searchSchools } from './schools.js';
 import { isLocalFileTool } from './platforms/registry.js';
 import { CanvasDownloadShape } from './platforms/canvas/download-schema.js';
+import { BlackboardDownloadShape } from './platforms/blackboard/download-schema.js';
 
 const profile = ProfileId.optional().describe('School/account profile ID. Omit for active profile.');
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: true };
@@ -71,18 +72,41 @@ export function createMcp(backend = new Backend()) {
   server.registerTool('lms_check', { description: 'Live identity and course-list connectivity checks for the selected school. No login window is opened; missing authorization is reported. No private response bodies returned. Success is not a guarantee all features or other tenants work.', inputSchema: { profile, platform: Platform.optional() }, annotations: readOnly }, safe(async a => backend.check(await getProfile(a.profile), a.platform)));
   server.registerTool('lms_tools', { description: 'Discover general Canvas/Blackboard capabilities. Pass name for the exact JSON input schema before calling a tool. query filters descriptions; omit for a compact catalog.', inputSchema: { profile, platform: Platform.optional(), query: z.string().optional(), name: z.string().optional() }, annotations: readOnly }, safe(async a => backend.catalog(await getProfile(a.profile), a)));
   server.registerTool('lms_download_file', {
-    description: 'Save one original Canvas file locally when requested. Requires an absolute destination directory. Preserves existing files, streams and validates the download, and returns path, bytes and SHA-256. Uses the selected profile and existing school login. No remote writes; not cached. Large downloads may take up to five minutes.',
-    inputSchema: { profile, ...CanvasDownloadShape },
+    description: 'Save one original Canvas or Blackboard file locally when requested. Requires an absolute destination directory. For Canvas pass file_id; for Blackboard pass courseId and contentId (with optional source_file when multiple files exist). Preserves existing files, streams and validates the download, and returns path, bytes and SHA-256. Uses the selected profile and existing school login. No remote writes; not cached. Large downloads may take up to five minutes.',
+    inputSchema: {
+      profile,
+      platform: z.enum(['canvas', 'blackboard']).optional().describe('Platform to download from ("canvas" or "blackboard"). Inferred from file_id (canvas) or courseId+contentId (blackboard) when omitted.'),
+      file_id: CanvasDownloadShape.file_id.optional(),
+      courseId: BlackboardDownloadShape.courseId.optional(),
+      contentId: BlackboardDownloadShape.contentId.optional(),
+      source_file: BlackboardDownloadShape.source_file,
+      directory: CanvasDownloadShape.directory,
+      filename: CanvasDownloadShape.filename,
+      on_conflict: CanvasDownloadShape.on_conflict,
+      max_bytes: CanvasDownloadShape.max_bytes,
+    },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-  }, safe(async ({ profile: id, ...options }) => {
+  }, safe(async ({ profile: id, platform: requestedPlatform, file_id, courseId, contentId, source_file, directory, filename, on_conflict, max_bytes }) => {
     const p = await getProfile(id);
-    const required: PlatformName[] = ['canvas'];
+    const hasCanvas = file_id !== undefined;
+    const hasBlackboard = courseId !== undefined || contentId !== undefined || source_file !== undefined;
+    const target: 'canvas' | 'blackboard' = requestedPlatform ?? (hasBlackboard && !hasCanvas ? 'blackboard' : 'canvas');
+    if (target === 'canvas') {
+      if (!hasCanvas || hasBlackboard) throw new LmsError('DOWNLOAD_INPUT', 'Canvas downloads require file_id and cannot include Blackboard courseId, contentId, or source_file.');
+      const required: PlatformName[] = ['canvas'];
+      const gate = await requireAuthorization(p, required); if (gate) return gate;
+      const options = { file_id, directory, ...(filename ? { filename } : {}), on_conflict, max_bytes };
+      return attachAuthorization(await backend.call(p, 'canvas_download_file', options), p, required);
+    }
+    if (!courseId || !contentId || hasCanvas) throw new LmsError('DOWNLOAD_INPUT', 'Blackboard downloads require courseId and contentId, and cannot include Canvas file_id.');
+    const required: PlatformName[] = ['blackboard'];
     const gate = await requireAuthorization(p, required); if (gate) return gate;
-    return attachAuthorization(await backend.call(p, 'canvas_download_file', options), p, required);
+    const options = { courseId, contentId, directory, ...(source_file ? { source_file } : {}), ...(filename ? { filename } : {}), on_conflict, max_bytes };
+    return attachAuthorization(await backend.call(p, 'bb_download_file', options), p, required);
   }));
   server.registerTool('lms_call', { description: 'Call a reviewed read-only upstream tool using its exact schema. Before the first read, authorization is checked automatically and the isolated login app opens when needed. Returns source origin, fetch time, cache state, coverage and original response. 60-second in-memory cache; fresh bypasses it. No raw requests or remote writes.', inputSchema: { profile, tool: z.string(), args: z.record(z.string(), z.unknown()).default({}), fresh: z.boolean().optional() }, annotations: readOnly }, safe(async a => {
     const p = await getProfile(a.profile);
-    if (isLocalFileTool(a.tool)) throw new LmsError('LOCAL_FILE_TOOL', 'Use lms_download_file to save original Canvas files; this read-only tool cannot write local files.');
+    if (isLocalFileTool(a.tool)) throw new LmsError('LOCAL_FILE_TOOL', 'Use lms_download_file to save original files locally; this read-only tool cannot write local files.');
     const required = [platformFor(a.tool)];
     const gate = await requireAuthorization(p, required); if (gate) return gate;
     return attachAuthorization(await backend.call(p, a.tool, a.args, a), p, required);

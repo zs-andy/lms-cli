@@ -4,6 +4,7 @@ export const blackboard = {
   id: 'blackboard' as const,
   label: 'Blackboard',
   environmentPrefixes: ['BLACKBOARD_'],
+  localFileTools: ['bb_download_file'],
   readTools: [
     'bb_whoami',
     'bb_session_status',

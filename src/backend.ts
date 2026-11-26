@@ -95,7 +95,7 @@ export class Backend {
           const downloadCode = diagnostic.match(/\b(DOWNLOAD_(?:INPUT|FILENAME|LIMIT|INVALID|INCOMPLETE|EXISTS))\b/)?.[1];
           if (downloadCode) {
             const messages: Record<string, string> = {
-              DOWNLOAD_INPUT: 'Use a positive Canvas file ID and an absolute local directory.',
+              DOWNLOAD_INPUT: 'Provide valid platform file identifiers and an absolute local directory.',
               DOWNLOAD_FILENAME: 'Use a shorter filename without directory separators.',
               DOWNLOAD_LIMIT: 'The file exceeds the configured download byte limit.',
               DOWNLOAD_INVALID: 'The response is not the requested file. No final file was saved.',

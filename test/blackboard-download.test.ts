@@ -208,7 +208,7 @@ test('external-only content items are rejected as NOT_FOUND without fetching ext
     return origFetch(input, init);
   });
   await assert.rejects(saveBlackboardFile(client, options), /no downloadable Blackboard file/);
-  assert(!fetched.some(url => url.includes('google.com')));
+  assert(!fetched.some(url => new URL(url).hostname === 'docs.google.com'));
 });
 
 test('off-origin CDN redirects never receive Blackboard cookies; login redirects require auth', async t => {
@@ -242,7 +242,7 @@ test('off-origin CDN redirects never receive Blackboard cookies; login redirects
 
   await saveBlackboardFile(client, options);
   const originHop = captured.find(([url]) => url.includes('/bbcswebdav/'));
-  const cdnHop = captured.find(([url]) => url.includes('cdn.bbcdn.io'));
+  const cdnHop = captured.find(([url]) => new URL(url).hostname === 'cdn.bbcdn.io');
   assert(originHop);
   assert(cdnHop);
   assert.match((originHop[1]!.headers as Record<string, string>).Cookie, /BbRouter=synthetic-bb-cookie/);

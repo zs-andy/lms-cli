@@ -32,13 +32,13 @@ jobs:
     steps:
       - uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
             感谢你向 **lms-cli** 提交首个 Issue！/ Thanks for opening your first issue in **lms-cli**!
 
             - 维护者会尽快查看并回复。如果是学校使用体验或常见问题，也欢迎在 [Discussions](https://github.com/zs-andy/lms-cli/discussions) 与其他同学交流。
             - **安全提醒 / Security reminder**: 请勿在公开 Issue 或日志中包含真实的学校密码、Cookie、API Token、成绩或私人课程资料（安全漏洞请通过 [Private Vulnerability Reporting](https://github.com/zs-andy/lms-cli/security/advisories/new) 私密反馈）。
-          pr-message: |
+          pr_message: |
             欢迎加入 **lms-cli** 贡献者社区，感谢你的首个 Pull Request！/ Welcome to the **lms-cli** community and thanks for your first pull request!
 
             - 请确认本地已通过 `npm run check:repo`、`npm run typecheck` 和 `npm test`（使用离线合成数据，不包含真实学校凭据或个人路径）。

@@ -5,7 +5,7 @@ import { readdir, open, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { signAsync } from '@electron/osx-sign';
+import { sign } from '@electron/osx-sign';
 
 const exec = promisify(execFile);
 export const jitEntitlements = fileURLToPath(new URL('./entitlements-jit.plist', import.meta.url));
@@ -61,7 +61,7 @@ export async function signStandaloneMac(stage, config) {
   for (const path of files.filter(path => !path.startsWith(`${app}/`))) {
     await command('codesign', ['--force', '--sign', config.identity, '--options', 'runtime', '--timestamp', ...(path === node ? ['--entitlements', jitEntitlements] : []), path]);
   }
-  await signAsync({ app, identity: config.identity, platform: 'darwin', type: 'distribution', strictVerify: true,
+  await sign({ app, identity: config.identity, platform: 'darwin', type: 'distribution', strictVerify: true,
     preAutoEntitlements: false, preEmbedProvisioningProfile: false,
     optionsForFile: path => path === app ? { entitlements: jitEntitlements } : {} });
   await command('codesign', ['--verify', '--deep', '--strict', app]);

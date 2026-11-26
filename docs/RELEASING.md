@@ -74,8 +74,8 @@ npm run pack:standalone
 自动草稿发布（推荐）：
 
 1. 运行 `npm run release:bump <X.Y.Z>` 同步版本号，更新 `CHANGELOG.md`（可选编写 `docs/releases/vX.Y.Z.md`），提交并合并至 `main`。
-2. 推送版本标签 `vX.Y.Z`（或手动触发 `Prepare draft release` 工作流 `.github/workflows/release.yml`）。工作流会自动校验标签与 manifest 一致性，在 Ubuntu / macOS / Windows 上完成全量测试与打包，生成 `SHA256SUMS.txt`，并创建带分类说明的 **Draft Release**（绝不自动公开）。
-3. 若需替换或追加本地签名/公证的 macOS 安装包，在发布前于 Draft Release 中替换并重新生成 `SHA256SUMS.txt`，随后在隔离环境验收并手动点击发布。
+2. 推送版本标签 `vX.Y.Z`（或手动触发 `Prepare draft release` 工作流 `.github/workflows/release.yml`）。工作流会自动校验标签与 manifest 一致性，在 Ubuntu / macOS / Windows 上完成全量测试与打包，生成 `SHA256SUMS.txt` 与经过校验的 Homebrew / Scoop / Winget 清单（`scripts/generate-package-manifests.mjs`），并创建带分类说明的 **Draft Release**（绝不自动公开）。
+3. 若需替换或追加本地签名/公证的 macOS 安装包，在发布前于 Draft Release 中替换并重新生成 `SHA256SUMS.txt` 及包管理器清单（`npm run pack:manifests -- --version X.Y.Z --checksums SHA256SUMS.txt --out release-manifests`），随后在隔离环境验收并手动点击发布。
 
 手动附加已有 CI 产物（备选）：
 

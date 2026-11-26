@@ -91,11 +91,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.tag }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
       - uses: actions/download-artifact@v8
         with:
           pattern: release-*
           path: artifacts
-      - name: Collect assets, generate SHA256SUMS.txt, and create draft release
+      - name: Collect assets, generate SHA256SUMS.txt and package manifests, and create draft release
         shell: bash
         run: |
           set -euo pipefail
@@ -112,6 +115,18 @@ jobs:
           done < <(find artifacts -type f \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name 'lms-cli-*.tar.gz' \) -print0)
           test -n "$(find publish -name 'lms-cli-*.tar.gz' -print -quit)"
           (cd publish && shopt -s nullglob && assets=(*.dmg *.exe *.AppImage *.tar.gz) && sha256sum -- "${assets[@]}" > SHA256SUMS.txt)
+          version="${RELEASE_TAG#v}"
+          node scripts/generate-package-manifests.mjs \
+            --version "$version" \
+            --checksums publish/SHA256SUMS.txt \
+            --out publish-manifests
+          tar -czf "publish/lms-cli-${version}-package-manifests.tar.gz" -C publish-manifests .
+          if [ -f publish-manifests/homebrew/Formula/lms-cli.rb ]; then
+            cp publish-manifests/homebrew/Formula/lms-cli.rb publish/lms-cli.rb
+          fi
+          if [ -f publish-manifests/scoop/bucket/lms-cli.json ]; then
+            cp publish-manifests/scoop/bucket/lms-cli.json publish/lms-cli.json
+          fi
           notes_file="docs/releases/${RELEASE_TAG}.md"
           if [ -f "$notes_file" ]; then
             gh release create "$RELEASE_TAG" publish/* \

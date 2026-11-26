@@ -10,13 +10,17 @@ import lockfile from 'proper-lockfile';
 import * as tar from 'tar';
 import { atomicWrite, stateHome } from './config.js';
 import { LmsError } from './errors.js';
-import { managedRoot } from './runtime.js';
+import { installManager, managedRoot, PACKAGE_MANAGER_UPGRADE_COMMANDS, upgradeGuidance } from './runtime.js';
 import { parseVersion, RELEASES_URL, TRUSTED_RELEASE_HOSTS, type UpdateInfo } from './updates.js';
 
 export const INSTALL_MARKER = 'lms-cli-managed-v1\n';
 export function safeTag(value: string) { return /^v\d+\.\d+\.\d+$/.test(value) && Boolean(parseVersion(value)); }
 
 export async function installationRoot(root = managedRoot()) {
+  const manager = installManager();
+  if (manager) {
+    throw new LmsError('PACKAGE_MANAGER_INSTALL', upgradeGuidance(manager), PACKAGE_MANAGER_UPGRADE_COMMANDS[manager]);
+  }
   if (!root || resolve(root) === parse(resolve(root)).root || resolve(root) === homedir()) throw new LmsError('UNMANAGED_INSTALL', '当前不是一条命令安装的托管 CLI，不能安全地自动覆盖。', `请按 README 的安装命令安装自包含 CLI，或从 ${RELEASES_URL} 下载；原有学校数据会保留。`);
   try { if (await readFile(join(root, '.lms-install'), 'utf8') !== INSTALL_MARKER) throw new Error(); }
   catch { throw new LmsError('INSTALL_CONFLICT', '安装目录标记缺失或不匹配，没有覆盖任何文件。'); }

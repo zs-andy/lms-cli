@@ -97,3 +97,15 @@ npm run verify:standalone
 ```
 
 自包含包使用匹配系统/架构的官方 Node.js、生产依赖与 Electron 授权运行时。应用数据与程序分离，更新切换版本指针并保留上一版本。安装选项见 [CLI_INSTALL.md](CLI_INSTALL.md)，发布流程见 [RELEASING.md](RELEASING.md)，贡献要求见 [CONTRIBUTING.md](../CONTRIBUTING.md)。
+
+后台授权的真实 Electron 离线测试（合成表单、内存 vault、替代验证器）：
+
+```sh
+npm run build
+npm run verify:auth:background
+LMS_BACKGROUND_TEST=no-consent npm run verify:auth:background
+LMS_BACKGROUND_TEST=timeout npm run verify:auth:background
+LMS_BACKGROUND_TEST=partial npm run verify:auth:background
+```
+
+覆盖自动提交、隐藏 SSO 子窗口、无焦点事件、缺少授权、超时清理及跨平台部分成功；超时场景仅在测试进程内缩短等待。注意：后台模式仅在图形会话内隐藏窗口，无显示服务（或 Xvfb）及系统凭据库的纯无头 Linux 仍不受支持。

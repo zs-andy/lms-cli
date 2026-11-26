@@ -94,6 +94,17 @@ claude plugin install lms-cli@lms-cli
 
 Blackboard 待办查询按最多 15 天的窗口请求真实待办接口并去重合并，解决 PolyU 单次范围超过上限时的报错。接口、权限或网络失败仍返回错误，不会用日历事件替代待办。
 
+### 后台自动重新授权
+
+已在授权窗口启用“记住密码”和“自动登录”后，可在定时任务或 MCP 服务环境中设置 `LMS_AUTH_BACKGROUND=1`：
+
+```sh
+LMS_AUTH_BACKGROUND=1 lms overview --days 7 --fresh
+LMS_AUTH_BACKGROUND=1 lms auth login
+```
+
+此模式隐藏授权主窗口、学校 SSO 子窗口及 JavaScript 对话框，不抢焦点；macOS 也不显示 Dock 图标。每个平台最多尝试 45 秒，其中一个失败仍会尝试其余平台。没有已保存的自动登录授权时直接失败，不自动保存密码或改变授权选项。MFA、CAPTCHA、网络错误及不支持的表单不会自动弹出窗口；未完成的授权沿用 `cancelled` 状态，调用方应报告缺失来源，不能声称登录成功。手动修复时，在未设置该环境变量的终端运行 `lms auth login`。后台模式用于在图形桌面会话内隐藏窗口；无显示服务（或 Xvfb）及系统密钥服务的纯无头 Linux 仍不受支持。默认交互式登录流程不变。
+
 ## 更新
 
 ```sh

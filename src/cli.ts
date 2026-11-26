@@ -99,8 +99,10 @@ profilesCommand.command('use <id>').action(async id => out(await useProfile(id))
 const auth = program.command('auth').description('School authorization for the selected profile');
 auth.command('login').option('--platform <name>', `${platformIds.join(' or ')}; omit for all`).action(async o => {
   const p = await getProfile(profileId()); const job = startLogin(p, o.platform ? Platform.parse(o.platform) : undefined);
-  process.stderr.write(`已打开 ${p.label} 的登录窗口，请完成学校登录。完成后会自动继续。\n`);
-  const state = await finishLogin(job.id); out({ ok: state === 'finished', state, ...(await authStatus(p)) });
+  process.stderr.write(job.background
+    ? `正在后台尝试 ${p.label} 的自动重新授权（不弹出窗口）；若缺少自动登录授权、遇到 MFA 或超时将返回 cancelled。\n`
+    : `已打开 ${p.label} 的登录窗口，请完成学校登录。完成后会自动继续。\n`);
+  const state = await finishLogin(job.id); out({ ok: state === 'finished', state, background: job.background, ...(await authStatus(p)) });
 });
 auth.command('status').option('--live', 'Validate by a read request, instead of stored metadata only').action(async o => {
   if (!o.live) return out(await authStatus(await getProfile(profileId())));

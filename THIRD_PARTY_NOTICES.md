@@ -10,8 +10,9 @@ The neutral lms-cli book/terminal icon (`assets/lms-icon.svg` and its rendered P
 
 - [xmike04/canvas-student-mcp](https://github.com/xmike04/canvas-student-mcp), v1.3.3, commit `d35bb973c82604f6f16414709b926b892a42558f`. Original license: `vendor/canvas/LICENSE`.
 - [felipedias-ie/blackboard-mcp](https://github.com/felipedias-ie/blackboard-mcp), v0.6.0, commit `73fb032e14d3fecce396a5a0bf59404ca62dbe29`. Original license: `vendor/blackboard/LICENSE`.
+- First-party minimal read-only Moodle MCP connector (`vendor/moodle/`, MIT). License: `vendor/moodle/LICENSE`.
 
-Sources are pinned in `vendor/`, compiled with the application, and not fetched from a moving branch at runtime. These are community connectors, not institution-certified integrations or a claim of universal maturity. Canvas uses its REST endpoints. Blackboard uses Learn Ultra's internal endpoints, which may change without notice.
+Sources are pinned in `vendor/`, compiled with the application, and not fetched from a moving branch at runtime. These are community connectors, not institution-certified integrations or a claim of universal maturity. Canvas uses its REST endpoints. Blackboard uses Learn Ultra's internal endpoints, which may change without notice. Moodle uses strictly allowlisted read-only Moodle Web Service REST endpoints (token mode) or authenticated Moodle AJAX services (cookie session mode).
 
 Local patches inherited from the earlier deployment: HTTPS / URL-credential rejection, Canvas same-origin pagination and credential isolation on download redirects, HTTP timeouts, bounded Blackboard redirects, explicit read-only environment override, configurable Canvas Keychain service.
 

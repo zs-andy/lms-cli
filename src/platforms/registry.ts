@@ -1,10 +1,11 @@
 import { canvas } from './canvas/index.js';
 import { blackboard } from './blackboard/index.js';
+import { moodle } from './moodle/index.js';
 import type { PlatformDefinition } from './types.js';
 import { LmsError } from '../errors.js';
 
 // The single registration point. Import metadata only; runtimes are lazy worker imports.
-export const platformDefinitions = [canvas, blackboard] as const;
+export const platformDefinitions = [canvas, blackboard, moodle] as const;
 export type PlatformId = typeof platformDefinitions[number]['id'];
 export const platformIds = platformDefinitions.map(p => p.id) as [PlatformId, ...PlatformId[]];
 

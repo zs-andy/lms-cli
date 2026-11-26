@@ -4,7 +4,7 @@
 
 # lms-cli
 
-**Multi-school Canvas & Blackboard CLI and read-only MCP server for Codex, Claude Code, and terminal workflows.**
+**Multi-school Canvas, Blackboard & Moodle CLI and read-only MCP server for Codex, Claude Code, and terminal workflows.**
 
 [![CI](https://github.com/zs-andy/lms-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/zs-andy/lms-cli/actions/workflows/ci.yml)
 [![Security & CodeQL](https://github.com/zs-andy/lms-cli/actions/workflows/security.yml/badge.svg)](https://github.com/zs-andy/lms-cli/actions/workflows/security.yml)
@@ -18,7 +18,7 @@
 
 ---
 
-Query courses, announcements, assignments, grades, files, and calendars across **Canvas** and **Blackboard** from a single terminal interface — or expose them safely to AI agents via read-only **Model Context Protocol (MCP)** tools.
+Query courses, announcements, assignments, grades, files, and calendars across **Canvas**, **Blackboard**, and **Moodle** from a single terminal interface — or expose them safely to AI agents via read-only **Model Context Protocol (MCP)** tools.
 
 Installation, school discovery, profile setup, and updates all happen directly in the terminal. A local sign-in window opens only when your university SSO or MFA requires interactive authentication.
 
@@ -45,7 +45,7 @@ Terminal / Codex / Claude Code / MCP Client
      worker.ts  (isolated per profile × platform) ──► vault.ts (OS keychain)
                    │
                    ▼
-    platforms/{canvas,blackboard}/runtime.ts  ──► University HTTPS API
+    platforms/{canvas,blackboard,moodle}/runtime.ts  ──► University HTTPS API
 ```
 
 Every LMS platform is registered once in `src/platforms/registry.ts` — CLI flags, MCP schemas, login policies, and overview planners are all derived from it. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

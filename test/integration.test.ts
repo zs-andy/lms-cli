@@ -13,10 +13,12 @@ import { platformDefinitions } from '../dist/src/platforms/registry.js';
 const home = await mkdtemp(join(tmpdir(), 'lms-integration-')); process.env.LMS_HOME = home; process.env.LMS_UPDATE_CHECK = '0';
 after(() => rm(home, { recursive: true, force: true }));
 await addProfile(polyu);
+const allPlatformsProfile = { ...polyu, id: 'all-platforms', moodle: 'https://moodle.example.edu' };
+await addProfile(allPlatformsProfile);
 test('real upstream MCP handshakes work offline and expose reviewed schemas', async () => {
   const b = new Backend();
   try {
-    const catalog = await b.catalog(polyu); assert(catalog.length >= 50);
+    const catalog = await b.catalog(allPlatformsProfile); assert(catalog.length >= 60);
     assert(!catalog.some(t => /submit|save_quiz|start_quiz|raw_request|batch_request/.test(t.name)));
     const announcement = await b.catalog(polyu, { name: 'bb_announcements' }); assert(announcement[0]!.inputSchema);
     for (const definition of platformDefinitions) {
@@ -25,8 +27,9 @@ test('real upstream MCP handshakes work offline and expose reviewed schemas', as
       }
     }
     const result = await b.call(polyu, 'canvas_list_courses'); assert.equal(result.error?.code, 'AUTH_REQUIRED');
+    const moodleResult = await b.call(allPlatformsProfile, 'moodle_list_courses'); assert.equal(moodleResult.error?.code, 'AUTH_REQUIRED');
     // Every precomposed overview argument must pass the actual upstream schema.
-    const overview = await b.overview(polyu, 14); assert(overview.partial); assert.equal(overview.results.length, 8);
+    const overview = await b.overview(allPlatformsProfile, 14); assert(overview.partial); assert.equal(overview.results.length, 12);
     assert(overview.results.every(r => r.error?.code === 'AUTH_REQUIRED'), JSON.stringify(overview.results.map(r => ({ tool: r.tool, error: r.error }))));
   } finally { await b.close(); }
 });
@@ -115,9 +118,9 @@ test('registering a synthetic third platform wires config, CLI, MCP, UI, vault a
   await writeFile(join(fixture, 'package.json'), JSON.stringify({ type: 'module' }));
   const registryPath = join(fixture, 'dist/src/platforms/registry.js');
   const registry = await readFile(registryPath, 'utf8');
-  assert(registry.includes('[canvas, blackboard]'));
+  assert(registry.includes('[canvas, blackboard, moodle]'));
   // Only the copied registration point changes. The real source/tree stays untouched.
-  await writeFile(registryPath, `import { example } from './_template/index.js';\n${registry.replace('[canvas, blackboard]', '[canvas, blackboard, example]')}`);
+  await writeFile(registryPath, `import { example } from './_template/index.js';\n${registry.replace('[canvas, blackboard, moodle]', '[canvas, blackboard, moodle, example]')}`);
   const env = { ...process.env, LMS_HOME: join(fixture, 'state') };
   const cli = join(fixture, 'dist/src/cli.js');
   const added = spawnSync(process.execPath, [cli, 'init', '--id', 'third', '--label', 'Third Platform', '--timezone', 'UTC', '--example', 'https://third.example.edu'], { env, encoding: 'utf8', timeout: 10000 });

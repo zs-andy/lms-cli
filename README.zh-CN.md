@@ -4,7 +4,7 @@
 
 # lms-cli
 
-**面向 Canvas 和 Blackboard 的多学校命令行工具与只读 MCP 服务。**
+**面向 Canvas、Blackboard 和 Moodle 的多学校命令行工具与只读 MCP 服务。**
 
 [![CI](https://github.com/zs-andy/lms-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/zs-andy/lms-cli/actions/workflows/ci.yml)
 [![Security & CodeQL](https://github.com/zs-andy/lms-cli/actions/workflows/security.yml/badge.svg)](https://github.com/zs-andy/lms-cli/actions/workflows/security.yml)
@@ -18,7 +18,7 @@
 
 ---
 
-面向 Canvas 和 Blackboard 的多学校命令行工具，为终端和 Agent 提供统一的课程、通知、作业、成绩反馈与资料查询接口。
+面向 Canvas、Blackboard 和 Moodle 的多学校命令行工具，为终端和 Agent 提供统一的课程、通知、作业、成绩反馈与资料查询接口。
 
 安装、学校搜索、配置和更新均在终端完成。只有学校登录或 MFA 需要交互时才打开授权窗口。支持独立使用 CLI，也可通过 MCP 接入 Codex、Claude Code 或其他 Agent 客户端。
 

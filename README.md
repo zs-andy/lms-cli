@@ -123,6 +123,17 @@ Set `LMS_UPDATE_CHECK=0` to disable automatic update checks.
 
 When re-authentication is needed, `lms-cli` always opens your school's genuine SSO/login page. Optional, off-by-default **Remember Password** and **Auto Sign-In** toggles are available for standard forms, multi-step sign-in flows, and Microsoft ADFS (such as PolyU). Credentials are encrypted locally only after verified authentication; CAPTCHA, push MFA, and device compliance remain controlled by your school. See [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for details and cleanup instructions.
 
+### Background Reauthorization
+
+After enabling both **Remember Password** and **Auto Sign-In** interactively, scheduled CLI or MCP runs can opt into hidden reauthorization with `LMS_AUTH_BACKGROUND=1`:
+
+```sh
+LMS_AUTH_BACKGROUND=1 lms overview --days 7 --fresh
+LMS_AUTH_BACKGROUND=1 lms auth login
+```
+
+This keeps the authorization controller, school SSO child windows, and JavaScript dialogs hidden without stealing focus (and suppresses the macOS Dock icon). Each platform is capped at 45 seconds and continues to remaining platforms on failure. Without existing consent—or on MFA, CAPTCHA, network errors, or unsupported forms—it fails closed with `state: "cancelled"` instead of popping up a window; repair interactively by running `lms auth login` with `LMS_AUTH_BACKGROUND` unset. Note that background mode hides windows within a graphical desktop session; headless Linux without a display server (or Xvfb) and OS Secret Service remains unsupported.
+
 ## Documentation
 
 - **Users**: [User Guide](docs/USER_GUIDE.md) · [Schools & Multi-Account Setup](docs/SCHOOLS.md) · [School Compatibility Matrix](docs/COMPATIBILITY.md) · [Install Options](docs/CLI_INSTALL.md) · [Privacy](PRIVACY.md) · [Security](SECURITY.md)

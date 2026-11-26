@@ -53,6 +53,7 @@
     "pack:standalone": "npm run build && node scripts/pack-standalone.mjs",
     "pack:app:release": "npm run build && node scripts/pack-macos-app.mjs",
     "verify:standalone": "node scripts/verify-standalone.mjs",
+    "verify:auth:background": "electron scripts/verify-background-auth.mjs",
     "verify:auth": "electron scripts/verify-login-preload.mjs && electron scripts/verify-adfs-preload.mjs && electron scripts/verify-auth-flow.mjs && electron scripts/verify-auth-ui.mjs",
     "pack:app": "npm run build && electron-builder --publish never",
     "prepack": "npm run build"

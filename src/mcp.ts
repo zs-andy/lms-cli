@@ -33,7 +33,9 @@ async function requireAuthorization(p: Profile, requested: PlatformName[]): Prom
     error: {
       code: 'AUTH_REQUIRED',
       message: `Sign in to ${missing.join(' and ')} before reading this LMS data.`,
-      hint: 'The authorization window has been opened. Complete school login and MFA there, then retry the original request.',
+      hint: job.background
+        ? 'Background authorization has been started without visible windows. Wait with lms_auth_wait, then retry the original request. If it is cancelled, run lms auth login interactively with LMS_AUTH_BACKGROUND unset.'
+        : 'The authorization window has been opened. Complete school login and MFA there, then retry the original request.',
     },
     authorization: job,
     note: 'No password, MFA code, Cookie or token is requested in chat. Authorization is complete only after encrypted credentials are verified locally.',
@@ -46,7 +48,9 @@ function attachAuthorization<T extends { error?: { code?: string } }>(result: T,
   return {
     ...result,
     authorization: job,
-    note: 'The LMS session expired or was rejected. Complete the authorization window, then retry the original request.',
+    note: job.background
+      ? 'The LMS session expired or was rejected. Background authorization has been started without visible windows; wait with lms_auth_wait and retry, or run lms auth login interactively with LMS_AUTH_BACKGROUND unset.'
+      : 'The LMS session expired or was rejected. Complete the authorization window, then retry the original request.',
   };
 }
 
@@ -90,7 +94,15 @@ export function createMcp(backend = new Backend()) {
     const gate = await requireAuthorization(p, required); if (gate) return gate;
     const result = await backend.batch(p, a.calls, a.fresh);
     const expired = [...new Set(result.results.filter(item => item.error?.code === 'AUTH_REQUIRED').map(item => item.platform))] as PlatformName[];
-    return expired.length ? { ...result, authorization: startLogin(p, expired.length === platforms(p).length ? undefined : expired[0]), note: 'One or more LMS sessions expired. Complete the authorization window, then retry the failed reads.' } : result;
+    if (!expired.length) return result;
+    const job = startLogin(p, expired.length === platforms(p).length ? undefined : expired[0]);
+    return {
+      ...result,
+      authorization: job,
+      note: job.background
+        ? 'One or more LMS sessions expired. Background authorization has been started without visible windows; wait with lms_auth_wait and retry, or run lms auth login interactively with LMS_AUTH_BACKGROUND unset.'
+        : 'One or more LMS sessions expired. Complete the authorization window, then retry the failed reads.',
+    };
   }));
   server.registerTool('lms_overview', { description: 'Fast starting evidence for schedules or recent changes: courses, full announcements, planner/todo and calendars across configured platforms. Authorization is checked automatically and the isolated login app opens when needed. Not exhaustive: bounded notice history, no attachments. Do not use for unrelated narrow questions.', inputSchema: { profile, days: z.number().int().min(1).max(90).default(14), fresh: z.boolean().optional() }, annotations: readOnly }, safe(async a => {
     const p = await getProfile(a.profile);
@@ -98,7 +110,15 @@ export function createMcp(backend = new Backend()) {
     const gate = await requireAuthorization(p, required); if (gate) return gate;
     const result = await backend.overview(p, a.days, a.fresh);
     const expired = [...new Set(result.results.filter(item => item.error?.code === 'AUTH_REQUIRED').map(item => item.platform))] as PlatformName[];
-    return expired.length ? { ...result, authorization: startLogin(p, expired.length === platforms(p).length ? undefined : expired[0]), note: 'One or more LMS sessions expired. Complete the authorization window, then retry the overview.' } : result;
+    if (!expired.length) return result;
+    const job = startLogin(p, expired.length === platforms(p).length ? undefined : expired[0]);
+    return {
+      ...result,
+      authorization: job,
+      note: job.background
+        ? 'One or more LMS sessions expired. Background authorization has been started without visible windows; wait with lms_auth_wait and retry, or run lms auth login interactively with LMS_AUTH_BACKGROUND unset.'
+        : 'One or more LMS sessions expired. Complete the authorization window, then retry the overview.',
+    };
   }));
   server.registerTool('lms_auth_status', { description: 'Check stored authorization metadata and running login jobs; does not expose or live-validate credentials.', inputSchema: { profile }, annotations: readOnly }, safe(async a => authStatus(await getProfile(a.profile))));
   server.registerTool('lms_auth_login', { description: 'After the user asks to connect or agrees to sign in, open the selected school/account sign-in window. Returns immediately; the user completes sign-in privately. Call lms_auth_wait while waiting, then retry the original query.', inputSchema: { profile, platform: Platform.optional() }, annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true } }, safe(async a => startLogin(await getProfile(a.profile), a.platform)));

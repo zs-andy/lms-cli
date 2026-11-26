@@ -38,7 +38,17 @@ Windows 对应 `-Archive`、`-ChecksumFile`、`-Version`。校验和必须来自
 
 POSIX 安装器需要更新 PATH 时先备份 shell 配置，再附加带 `# lms-cli PATH` 标记的两行；撤销时移除这两行即可。Windows 更新用户 PATH 前在安装目录备份原值。`--no-path` / `-NoPath` 跳过 PATH 修改。
 
-## 版本与数据分离
+## 包管理器支持（Homebrew / Scoop / Winget）
+
+除自包含一键安装脚本外，每个稳定版 Release 还会根据核验后的 `SHA256SUMS.txt` 自动生成并附带对应的包管理器清单（`lms-cli.rb`、`lms-cli.json` 以及 `lms-cli-<version>-package-manifests.tar.gz` 中的 Winget 清单；生成与使用说明见 [packaging/README.md](../packaging/README.md)）：
+
+- **Homebrew（macOS / Linux）**：引用经过 SHA-256 校验的 `darwin`/`linux` 自包含压缩包，在 `bin/lms` 包装脚本中标记 `LMS_INSTALL_MANAGER=homebrew` 与稳定的 `opt_bin` 启动路径。升级请使用 `brew upgrade lms-cli`。
+- **Scoop（Windows）**：引用经过 SHA-256 校验的 `win32` 自包含压缩包，生成 `lms.cmd` 并标记 `LMS_INSTALL_MANAGER=scoop`。升级请使用 `scoop update lms-cli`。
+- **Winget（Windows）**：生成标准 v1.6.0 多文件清单，引用经过 SHA-256 校验的 Windows 安装程序。升级请使用 `winget upgrade --id zs-andy.lms-cli`。
+
+通过包管理器安装时，`lms doctor` 会如实报告 `"installation": "homebrew" | "scoop" | "winget"`；`lms update` 与 `lms update --rollback` 会拒绝覆盖包管理器目录并直接提示对应的包管理器升级命令，避免与托管版本指针冲突。学校配置、加密凭据与本地待办仍保存在独立的数据目录中。
+
+## 版本与数据分离（自包含安装）
 
 ```text
 lms-cli-runtime/

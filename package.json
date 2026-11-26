@@ -50,6 +50,7 @@
     "start": "node bin/lms.js",
     "auth:app": "electron .",
     "pack:cli": "npm run build && npm pack",
+    "pack:manifests": "node scripts/generate-package-manifests.mjs",
     "pack:standalone": "npm run build && node scripts/pack-standalone.mjs",
     "pack:app:release": "npm run build && node scripts/pack-macos-app.mjs",
     "verify:standalone": "node scripts/verify-standalone.mjs",

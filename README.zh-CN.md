@@ -38,7 +38,7 @@ Windows PowerShell：
 & ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/zs-andy/lms-cli/main/install.ps1).Content))
 ```
 
-安装器从 [GitHub Releases](https://github.com/zs-andy/lms-cli/releases) 获取匹配系统和 CPU 架构的稳定版 CLI，校验 SHA-256 后安装到用户目录，无需管理员权限。自包含安装包内置 Node.js 和授权运行时，无需预装 Node.js、npm 或 Git。执行远程脚本前，请审阅并确认来源。
+安装器从 [GitHub Releases](https://github.com/zs-andy/lms-cli/releases) 获取匹配系统和 CPU 架构的稳定版 CLI，校验 SHA-256 后安装到用户目录，无需管理员权限。自包含安装包内置 Node.js 和授权运行时，无需预装 Node.js、npm 或 Git。每个正式版本还会基于 `SHA256SUMS.txt` 自动生成 **Homebrew / Scoop / Winget** 清单（见 [packaging/README.md](packaging/README.md)），并在通过包管理器安装时由 `lms update` 提示使用对应包管理器升级。执行远程脚本前，请审阅并确认来源。
 
 在线安装需要 Release 中包含对应的 `lms-cli-<version>-<os>-<arch>.tar.gz` 和 `SHA256SUMS.txt`。目标平台的安装包尚未发布时，可采用[源码安装](docs/DEVELOPMENT.md#源码安装)。Linux 需要系统密钥服务；网页登录需要图形会话。
 

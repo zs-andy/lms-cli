@@ -66,7 +66,7 @@ curl -fsSL --proto '=https' https://raw.githubusercontent.com/zs-andy/lms-cli/ma
 & ([scriptblock]::Create((Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/zs-andy/lms-cli/main/install.ps1).Content))
 ```
 
-The installer downloads the matching self-contained archive from [GitHub Releases](https://github.com/zs-andy/lms-cli/releases), verifies `SHA256SUMS.txt`, and installs into your user directory with bundled Node.js — no admin rights, Node, npm, or Git required. For unsupported targets, see [building from source](docs/DEVELOPMENT.md).
+The installer downloads the matching self-contained archive from [GitHub Releases](https://github.com/zs-andy/lms-cli/releases), verifies `SHA256SUMS.txt`, and installs into your user directory with bundled Node.js — no admin rights, Node, npm, or Git required. Verified **Homebrew**, **Scoop**, and **Winget** manifests are also generated from `SHA256SUMS.txt` for each release (see [packaging/README.md](packaging/README.md)). For unsupported targets, see [building from source](docs/DEVELOPMENT.md).
 
 ### 2. Discover & Connect Your School
 

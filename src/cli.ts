@@ -15,7 +15,7 @@ import { ask } from './ask.js';
 import { getPlatform, platformDefinitions, platformIds } from './platforms/registry.js';
 import { setup, diagnostics } from './setup.js';
 import { connectCodex } from './codex.js';
-import { mcpConfig, managedRoot } from './runtime.js';
+import { mcpConfig, managedRoot, installManager, installationKind, PACKAGE_MANAGER_UPGRADE_COMMANDS, upgradeGuidance } from './runtime.js';
 import { checkForUpdates, type UpdateInfo } from './updates.js';
 import { confirm, interactive } from './terminal.js';
 import { searchSchools } from './schools.js';
@@ -71,12 +71,26 @@ program.command('update').description('检查新版本；确认后升级托管 C
   .option('--rollback', '回退到保留的上一版本，仍保留学校数据')
   .action(async o => {
     if (o.rollback && o.check) throw new LmsError('BAD_INPUT', '--rollback 和 --check 不能同时使用。');
+    const manager = installManager();
     if (o.rollback) {
+      if (manager) throw new LmsError('PACKAGE_MANAGER_INSTALL', upgradeGuidance(manager), PACKAGE_MANAGER_UPGRADE_COMMANDS[manager]);
       if (!o.yes && (!interactive() || !await confirm('回退到上一版本？学校配置、凭据和待办不会删除'))) return out({ ok: false, next: '确认后运行 lms update --rollback --yes。' });
       const { rollback } = await import('./upgrade.js'); return out(await rollback());
     }
     const update = await checkForUpdates();
-    if (o.check || update.status !== 'available') return out({ ok: update.status !== 'unavailable', ...update });
+    if (o.check || update.status !== 'available') {
+      return out({
+        ok: update.status !== 'unavailable',
+        ...update,
+        installation: installationKind(),
+        ...(manager ? { upgradeCommand: PACKAGE_MANAGER_UPGRADE_COMMANDS[manager] } : {}),
+      });
+    }
+    if (manager) {
+      const next = upgradeGuidance(manager);
+      if (o.yes) throw new LmsError('PACKAGE_MANAGER_INSTALL', next, PACKAGE_MANAGER_UPGRADE_COMMANDS[manager]);
+      return out({ ok: true, ...update, installation: manager, upgradeCommand: PACKAGE_MANAGER_UPGRADE_COMMANDS[manager], next });
+    }
     if (!managedRoot() || !update.asset || !update.checksumUrl) {
       const next = !managedRoot() ? '当前是源码/npm 安装。请按开发指南更新，或使用自包含 CLI 安装命令。' : '当前系统缺少匹配安装包或校验和，请查看发布页面。';
       if (o.yes) throw new LmsError('UPDATE_NOT_INSTALLABLE', next, update.releaseUrl);
@@ -216,7 +230,17 @@ items.command('list').action(async () => out(await listItems(await getProfile(pr
 items.command('upsert').requiredOption('--file <json>', 'JSON array of source-backed items').action(async o => out(await upsertItems(await getProfile(profileId()), JSON.parse(await readFile(o.file, 'utf8')))));
 items.command('export').requiredOption('--out <ics>', 'New output filename (existing files are not overwritten)').action(async o => { const p = await getProfile(profileId()); const result = exportCalendar(p, await listItems(p)); await writeFile(o.out, result.ics, { flag: 'wx', mode: 0o600 }); out({ ok: true, out: o.out, excluded: result.excluded, note: result.note }); });
 program.command('doctor').description('Local diagnostics, without reading or printing credentials').action(async () => {
-  out({ ...(await diagnostics()), stateHome: stateHome(), installation: managedRoot() ? 'managed' : 'npm-or-source', profiles: (await loadConfig()).profiles.map(p => p.id), readOnly: true, next: '运行 lms setup 自动完成缺失步骤。', note: 'Module loading is not an OS keychain or school login test. setup/check probe identity/course lists only; other features need separate acceptance.' });
+  const manager = installManager();
+  out({
+    ...(await diagnostics()),
+    stateHome: stateHome(),
+    installation: installationKind(),
+    ...(manager ? { upgradeCommand: PACKAGE_MANAGER_UPGRADE_COMMANDS[manager] } : {}),
+    profiles: (await loadConfig()).profiles.map(p => p.id),
+    readOnly: true,
+    next: '运行 lms setup 自动完成缺失步骤。',
+    note: 'Module loading is not an OS keychain or school login test. setup/check probe identity/course lists only; other features need separate acceptance.',
+  });
 });
 // Electron RUN_AS_NODE has a Node-shaped argv; Commander's Electron auto-detection
 // would otherwise interpret the script path as the command in packaged validators.

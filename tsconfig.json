@@ -6,5 +6,5 @@
     "esModuleInterop": true, "resolveJsonModule": true,
     "types": ["node"], "lib": ["ES2023", "DOM"]
   },
-  "include": ["src/**/*.ts", "src/**/*.cts", "vendor/canvas/src/index.ts", "vendor/blackboard/src/server.ts"]
+  "include": ["src/**/*.ts", "src/**/*.cts", "vendor/canvas/src/index.ts", "vendor/blackboard/src/server.ts", "vendor/moodle/src/index.ts"]
 }

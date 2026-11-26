@@ -115,7 +115,9 @@ test('invalid search inputs fail before network access', async () => {
   for (const query of ['', 'a', 'x'.repeat(121), '\u001bSchool', 'https://user:secret@school.edu', 'school.edu?token=secret']) {
     await assert.rejects(searchSchools(query, {}, noNetwork), { code: 'BAD_INPUT' });
   }
-  await assert.rejects(searchSchools('Example', { platform: 'moodle' as any }, noNetwork), { code: 'BAD_INPUT' });
+  await assert.rejects(searchSchools('Example', { platform: 'sakai' as any }, noNetwork), { code: 'BAD_INPUT' });
+  const moodleSearch = await searchSchools('Example', { platform: 'moodle' }, noNetwork);
+  assert.equal(moodleSearch.sources.find(s => s.source === 'moodle-directory')?.status, 'unsupported');
 });
 
 test('terminal selection requires a valid explicit number and does not auto-pick a single result', async () => {

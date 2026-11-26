@@ -80,7 +80,9 @@ export async function getProfile(id?: string): Promise<Profile> {
 export function platforms(p: Profile): Platform[] { return platformIds.filter(k => p[k]); }
 export const polyu = { id: 'polyu', label: 'The Hong Kong Polytechnic University', timezone: 'Asia/Hong_Kong', canvas: 'https://canvas.polyu.edu.hk', blackboard: 'https://learn.polyu.edu.hk' };
 
-export const presets = [{ name: 'polyu', profile: polyu, compatibility: 'Preset URLs only; school SSO and individual features still require live verification.' }];
+export const presets: ReadonlyArray<{ name: string; profile: Profile; compatibility: string }> = [
+  { name: 'polyu', profile: polyu, compatibility: 'Preset URLs only; school SSO and individual features still require live verification.' },
+];
 
 export async function initProfile(options: Partial<Profile> & { preset?: string }) {
   if (!options.preset) { const { preset: _preset, ...fields } = options; return addProfile(fields); }

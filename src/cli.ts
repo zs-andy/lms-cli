@@ -20,7 +20,7 @@ import { checkForUpdates, type UpdateInfo } from './updates.js';
 import { confirm, interactive } from './terminal.js';
 import { searchSchools } from './schools.js';
 
-const program = new Command().name('lms').description('lms-cli · multi-school Canvas / Blackboard CLI and Agent tools').version(VERSION).option('-p, --profile <id>', 'School/account profile (defaults to the active profile)').option('--json', 'Explicit machine-readable JSON output (default for structured commands)');
+const program = new Command().name('lms').description('lms-cli · multi-school Canvas / Blackboard / Moodle CLI and Agent tools').version(VERSION).option('-p, --profile <id>', 'School/account profile (defaults to the active profile)').option('--json', 'Explicit machine-readable JSON output (default for structured commands)');
 const profileId = () => program.opts().profile as string | undefined;
 const out = (value: any) => { process.stdout.write(`${JSON.stringify(value, null, 2)}\n`); if (value?.ok === false) process.exitCode = 1; };
 const parse = (value: string) => { try { const data = JSON.parse(value); if (!data || Array.isArray(data) || typeof data !== 'object') throw new Error(); return data as Record<string, unknown>; } catch { throw new LmsError('BAD_INPUT', 'Expected a JSON object.'); } };
@@ -38,7 +38,7 @@ const schoolOptions = (command: Command) => {
 schoolOptions(program.command('setup').description('一次完成终端配置、Codex 接入、必要授权和连接检查；可安全重跑')
   .option('--preset <name>', 'School preset, e.g. polyu').option('--id <id>', 'Optional account ID (generated automatically)')
   .option('--school <query>', '搜索学校名称或域名，在终端选择后配置；也用于添加另一所学校')
-  .option('--platform <name>', '学校搜索平台：canvas 或 blackboard')
+  .option('--platform <name>', `学校搜索平台：${platformIds.join(' / ')}`)
   .option('--offline', '仅搜索本地学校预设，不联网查询目录')
   .option('--manual', '直接填写学校平台网址')
   .option('-y, --yes', '确认给定的学校参数和本机配置；不能跳过学校 MFA')
@@ -89,7 +89,7 @@ schoolOptions(program.command('init').description('Create a custom school/accoun
 program.command('presets').description('List school URL presets; a preset is not a compatibility certification').action(() => out(presets));
 program.command('schools').description('发现学校平台地址，不读取账号、不登录或修改配置')
   .command('search <query>').description('按学校名称或域名搜索 Canvas 官方目录与本地预设')
-  .option('--platform <name>', 'canvas 或 blackboard').option('--offline', '仅搜索本地预设')
+  .option('--platform <name>', `${platformIds.join(' / ')}`).option('--offline', '仅搜索本地预设')
   .action(async (query, o) => out(await searchSchools(query, { ...o, platform: o.platform ? Platform.parse(o.platform) : undefined })));
 const profilesCommand = program.command('profiles').description('Manage school/account configurations; credentials stay isolated');
 schoolOptions(profilesCommand.command('add <id>').description('Add a school/account; does not replace an existing profile or change the active profile')).action(async (id, o) => out(await addProfile({ id, ...o })));
@@ -109,11 +109,16 @@ auth.command('status').option('--live', 'Validate by a read request, instead of 
   const result = await withBackend(profileId(), async (b, p) => Promise.all(platforms(p).map(platform => { const probe = getPlatform(platform).probes.identity; return b.call(p, probe.tool, probe.args, { fresh: true }); })));
   out({ ok: result.every(r => r.ok), results: result.map(({ platform, ok, error, fetchedAt }) => ({ platform, ok, error, fetchedAt })) });
 });
-auth.command('token').description('Import an institution-permitted Canvas token over stdin only').requiredOption('--stdin', 'Read token privately from stdin, not CLI arguments').action(async () => {
-  if (process.stdin.isTTY) throw new LmsError('BAD_INPUT', 'Provide the token via a pipe from your password manager; do not put it in shell arguments.');
-  let value = ''; for await (const c of process.stdin) { value += c; if (value.length > 16384) throw new LmsError('BAD_INPUT', 'Token is too long.'); }
-  out(await validateInWorker(await getProfile(profileId()), 'canvas', { kind: 'token', value: value.trim() }));
-});
+auth.command('token').description('Import an institution-permitted Canvas or Moodle token over stdin only')
+  .option('--platform <name>', 'canvas (default) or moodle', 'canvas')
+  .requiredOption('--stdin', 'Read token privately from stdin, not CLI arguments')
+  .action(async o => {
+    const platform = Platform.parse(o.platform);
+    if (platform !== 'canvas' && platform !== 'moodle') throw new LmsError('BAD_INPUT', 'Token import is supported for canvas or moodle only.');
+    if (process.stdin.isTTY) throw new LmsError('BAD_INPUT', 'Provide the token via a pipe from your password manager; do not put it in shell arguments.');
+    let value = ''; for await (const c of process.stdin) { value += c; if (value.length > 16384) throw new LmsError('BAD_INPUT', 'Token is too long.'); }
+    out(await validateInWorker(await getProfile(profileId()), platform, { kind: 'token', value: value.trim() }));
+  });
 auth.command('totp').description('Import an institution-provided TOTP seed privately; the seed stays encrypted on this device')
   .requiredOption('--platform <name>', `${platformIds.join(' or ')}`)
   .option('--stdin', 'Read the raw seed or otpauth:// URI from stdin')

@@ -14,6 +14,17 @@
 | --- | --- | --- | --- | --- | --- |
 | The Hong Kong Polytechnic University (PolyU / 香港理工大学) | Canvas + Blackboard | Preset (`polyu`) | Microsoft ADFS / Entra ID SSO | 课程、通知、作业、待办、日历、文件读取/下载 | Blackboard 待办单次查询窗口有限制（已自动按 15 天分段合并）；部分课程禁用 Files 列表时使用模块/页面回退 |
 
+## Moodle 适配器部署要求与实测范围 / Moodle Deployment Requirements
+
+Moodle 现已作为内置只读平台适配器接入（`--moodle https://<host>`），支持以下两种凭据模式：
+
+- **浏览器会话模式（`lms auth login --platform moodle`）**：在隔离授权窗口完成学校登录（含 SSO/MFA），采集限定在学校 HTTPS 根域名的 `MoodleSession` Cookie，经 `/my/` 内存解析 `sesskey` 后调用受审核的只读 `/lib/ajax/service.php` 接口。
+- **机构允许的 Web Service 令牌模式（`lms auth token --platform moodle --stdin`）**：经标准输入私密导入学校允许的 Moodle Web Service Token，通过 POST 正文（不放入 URL 查询串）调用受审核的只读 `/webservice/rest/server.php` 函数。
+
+**当前实测范围与已知限制（诚实声明）**：
+- 自动测试套件已离线验证工具白名单、同源/HTTPS 边界、Cookie 隔离、令牌正文传递、HTTP 200 异常封包与 MCP 握手；**尚未在真实高校 Moodle 站点完成实机验收**（欢迎社区提交真实学校实测报告）。
+- 要求 Moodle 部署在 HTTPS 根域名（不支持子路径如 `https://school.edu/moodle`）；站点需启用标准 Moodle Web Services 或核心只读 AJAX 接口，自定义会话 Cookie 前缀或隐藏 `M.cfg` 的主题可能需要进一步适配。
+
 ## 如何提交你的学校？ / Add Your School
 
 已经在你的大学成功使用 `lms-cli`？花 30 秒帮助同校同学：

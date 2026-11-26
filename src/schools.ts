@@ -1,6 +1,7 @@
 import { isIP } from 'node:net';
 import { presets, type Platform } from './config.js';
 import { LmsError } from './errors.js';
+import { platformIds } from './platforms/registry.js';
 
 export const CANVAS_DIRECTORY = 'https://canvas.instructure.com/api/v1/accounts/search';
 const unsafeText = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/;
@@ -53,19 +54,20 @@ async function readDirectory(response: Response): Promise<unknown> {
 
 export async function searchSchools(input: string, options: SchoolSearchOptions = {}, fetcher: typeof fetch = fetch): Promise<SchoolSearchResult> {
   const query = queryText(input);
-  if (options.platform && !['canvas', 'blackboard'].includes(options.platform)) throw new LmsError('BAD_INPUT', '学校搜索支持 canvas 或 blackboard。');
+  if (options.platform && !platformIds.includes(options.platform)) throw new LmsError('BAD_INPUT', `学校搜索支持 ${platformIds.join('、')}。`);
   const needle = query.toLocaleLowerCase();
   const matches: SchoolMatch[] = [];
   for (const preset of presets) {
     const aliases = preset.name === 'polyu' ? ['香港理工大学', '香港理工大學', '理大'] : [];
     const { label, timezone } = preset.profile;
-    const origins = Object.fromEntries(Object.entries(preset.profile).filter(([key]) => ['canvas', 'blackboard'].includes(key) && (!options.platform || key === options.platform))) as SchoolMatch['platforms'];
+    const origins = Object.fromEntries(Object.entries(preset.profile).filter(([key]) => (platformIds as readonly string[]).includes(key) && (!options.platform || key === options.platform))) as SchoolMatch['platforms'];
     if (Object.keys(origins).length && [preset.name, label, ...aliases, ...Object.values(origins)].some(value => value.toLocaleLowerCase().includes(needle))) {
       matches.push({ id: `preset:${preset.name}`, name: label, source: 'preset', platforms: origins, timezone });
     }
   }
   const sources: SchoolSearchResult['sources'] = [{ source: 'preset', status: 'ok', message: '随 CLI 分发的学校配置。' }];
   if (!options.platform || options.platform === 'blackboard') sources.push({ source: 'blackboard-directory', status: 'unsupported', message: 'Blackboard 目前提供本地预设搜索和手动网址接入；未接入公开在线目录。' });
+  if (!options.platform || options.platform === 'moodle') sources.push({ source: 'moodle-directory', status: 'unsupported', message: 'Moodle 目前支持通过学校 HTTPS 根网址手动接入；未接入公开在线目录。' });
   if (!options.platform || options.platform === 'canvas') {
     if (options.offline) sources.push({ source: 'canvas-directory', status: 'offline', message: '已关闭联网搜索，仅显示本地预设。' });
     else {

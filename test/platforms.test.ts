@@ -64,10 +64,11 @@ test('overview composes more than eight reads and reports unsupported platforms 
   const now = new Date('2026-09-21T12:00:00Z');
   const third: PlatformDefinition = { ...example, overview: () => ({ calls: [{ tool: 'example_courses' }], scope: { courseListOnly: true } }) };
   const combined = planOverview([...platformDefinitions, third], 14, now);
-  assert.equal(combined.calls.length, 9);
+  assert.equal(combined.calls.length, 13);
   assert.deepEqual(combined.unsupportedPlatforms, []);
   assert.deepEqual(combined.scope.platforms.example, { courseListOnly: true });
   assert.deepEqual(combined.calls.find(call => call.tool === 'canvas_list_calendar_events')?.args, { start_date: '2026-09-21', end_date: '2026-10-05' });
+  assert.deepEqual(combined.calls.find(call => call.tool === 'moodle_list_calendar_events')?.args, { days_ahead: 14, days_back: 0, limit: 50 });
   const missing = planOverview([example], 14, now);
   assert.deepEqual(missing.calls, []);
   assert.deepEqual(missing.unsupportedPlatforms, ['example']);
@@ -89,7 +90,7 @@ test('backend filters foreign tools from each connector and does not guess a den
 });
 
 test('worker setup scrubs every upstream environment namespace, not just the chosen platform', async () => {
-  const keys = ['CANVAS_COOKIE', 'BLACKBOARD_COOKIE', 'BLACKBOARD_MCP_ALLOW_WRITES', 'CANVAS_BASE_URL', 'CANVAS_NO_KEYCHAIN'];
+  const keys = ['CANVAS_COOKIE', 'BLACKBOARD_COOKIE', 'BLACKBOARD_MCP_ALLOW_WRITES', 'MOODLE_COOKIE', 'MOODLE_API_TOKEN', 'MOODLE_BASE_URL', 'CANVAS_BASE_URL', 'CANVAS_NO_KEYCHAIN'];
   const before = Object.fromEntries(keys.map(key => [key, process.env[key]]));
   try {
     for (const key of keys) process.env[key] = 'inherited-secret';
@@ -97,7 +98,7 @@ test('worker setup scrubs every upstream environment namespace, not just the cho
     assert.equal(context.origin, polyu.canvas);
     assert.equal(process.env.CANVAS_BASE_URL, polyu.canvas);
     assert.equal(process.env.CANVAS_NO_KEYCHAIN, '1');
-    for (const key of ['CANVAS_COOKIE', 'BLACKBOARD_COOKIE', 'BLACKBOARD_MCP_ALLOW_WRITES']) assert.equal(process.env[key], undefined);
+    for (const key of ['CANVAS_COOKIE', 'BLACKBOARD_COOKIE', 'BLACKBOARD_MCP_ALLOW_WRITES', 'MOODLE_COOKIE', 'MOODLE_API_TOKEN', 'MOODLE_BASE_URL']) assert.equal(process.env[key], undefined);
     assert.equal(isPlatformEnvironment('LMS_HOME'), false);
   } finally {
     for (const [key, value] of Object.entries(before)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }

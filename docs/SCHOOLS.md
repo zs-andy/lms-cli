@@ -21,7 +21,7 @@ lms schools search "理大" --offline
 
 - Canvas 在线结果来自[官方学校目录](https://developerdocs.instructure.com/services/canvas/resources/account_domain_lookups)，支持名称与域名匹配；覆盖范围和结果数量由目录决定。
 - 本地预设随 CLI 分发，可离线搜索。PolyU 预设包含两个平台地址和 `Asia/Hong_Kong` 时区，支持 `polyu`、`理大`、简体及繁体中文名称。
-- Blackboard 当前未接入公开在线目录。可搜索本地预设，或直接输入学校公布的 Blackboard 地址。
+- Blackboard 与 Moodle 当前未接入公开在线目录。Blackboard 可搜索本地预设，或直接输入学校公布的平台地址；Moodle 请直接输入学校公布的 HTTPS 根地址（`--moodle`）。
 - 同一域名的多个登录入口合并为一个站点，具体身份服务由学校登录页面选择。
 
 在线搜索只向 Canvas 发送搜索词，不发送账号或凭据。`--offline` 跳过在线目录；网络故障会显示来源不可用，可重试或手动接入。中文与简称能否匹配取决于目录内容，可尝试英文全称或平台域名。目录匹配不检查个人权限，也不会自动打开结果中的网址。
@@ -81,6 +81,6 @@ lms --profile <id> check
 
 授权在学校页面完成；`check` 读取身份和课程列表，不打开窗口，也不输出个人资料正文。通知、成绩、文件等能力应分别验证。
 
-Canvas 使用 REST 连接器和经过验证的学校会话；学校允许时，也可通过 `lms auth token --stdin` 私下导入个人令牌。Blackboard 使用 Learn Ultra 内部接口，其他版本和定制部署可能需要适配。能登录网页不代表所有 API 均可访问。
+Canvas 使用 REST 连接器和经过验证的学校会话；学校允许时，也可通过 `lms auth token --stdin` 私下导入个人令牌。Blackboard 使用 Learn Ultra 内部接口，其他版本和定制部署可能需要适配。Moodle 支持隔离窗口登录会话（`MoodleSession`）以及学校允许的 Web Service 令牌（`lms auth token --platform moodle --stdin`）。能登录网页不代表所有 API 均可访问。
 
-学校禁止内嵌登录或要求设备合规时，应遵守学校策略。会话到期后重新授权。当前实现仅适用于 Canvas 与 Blackboard；其他平台需通过[平台扩展接口](ADDING_A_PLATFORM.md)接入。
+学校禁止内嵌登录或要求设备合规时，应遵守学校策略。会话到期后重新授权。当前实现支持 Canvas、Blackboard 与 Moodle；其他平台可通过[平台扩展接口](ADDING_A_PLATFORM.md)接入。

@@ -16,6 +16,8 @@ import {
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ensureDir } from '../lib/paths.js';
+import { saveBlackboardFile } from '../download.js';
+import { BlackboardDownloadShape } from '../../../../src/platforms/blackboard/download-schema.js';
 
 /** A downloadable thing discovered on a content item. */
 interface FileTarget {
@@ -364,74 +366,16 @@ export function registerFileTools(server: McpServer): void {
   server.registerTool(
     'bb_download_file',
     {
-      title: 'Download a course file to disk',
+      title: 'Save an original Blackboard file locally',
       description:
-        'Downloads a file from a content item and saves it locally without extracting text. Use this for Office documents, images, archives, or anything the user wants to keep. Also handles content items that link to Google Slides/Docs/Sheets, fetching the export (pptx/docx/xlsx/pdf). Returns the saved path.',
-      inputSchema: {
-        courseId: z.string().describe('Course id, e.g. "_12345_1".'),
-        contentId: z.string().describe('Content item id holding the file.'),
-        fileName: z.string().optional().describe('Pick by name substring when several files exist.'),
-        all: z.boolean().optional().describe('Download every file on the item, not just the first.'),
-        format: z
-          .string()
-          .optional()
-          .describe('For externally-linked Google documents: pdf (default for download), pptx, docx, xlsx, csv, txt.'),
-      },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+        'Download one authorized Blackboard file from a content item to an absolute local directory. Streams original bytes, validates size and PDF/HTML integrity, strips credentials on off-origin redirects, preserves existing files, and returns path, bytes, and SHA-256. No remote changes. MCP clients use lms_download_file; CLI uses lms download --platform blackboard.',
+      inputSchema: BlackboardDownloadShape,
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
     guard('bb_download_file', async (args) => {
       const client = await getClient();
-      const { item, targets } = await resolveFileTargets(client, args.courseId, args.contentId);
-      const label = await client.courseName(args.courseId);
-      const dir = courseSubdir(client.config.downloadDir!, label);
-
-      const linkUrl = linkTargetOf(item.contentHandler, item.contentDetail);
-      const external = linkUrl ? recogniseExternalDocument(linkUrl) : null;
-      if (external && targets.length === 0) {
-        const dl = await fetchLinkedDocument(external, {
-          dir,
-          title: item.title,
-          format: args.format,
-          maxBytes: client.config.maxDownloadBytes,
-        });
-        return text(
-          [
-            `Fetched a linked ${external.kind} from ${external.provider}.`,
-            '',
-            table([
-              { file: dl.fileName, size: fmtBytes(dl.bytes), format: dl.format, path: dl.path },
-            ]),
-            '',
-            `Source: ${external.viewUrl}`,
-            `Other formats available: ${external.formats.filter((f) => f !== dl.format).join(', ')}`,
-          ].join('\n'),
-        );
-      }
-
-      const chosen = args.all ? targets : [pickTarget(targets, args.fileName)];
-      const rows: Array<Record<string, string | number | undefined>> = [];
-
-      for (const t of chosen) {
-        try {
-          const dl = await downloadToDisk(client.http, t.url, {
-            dir,
-            fileName: t.fileName,
-            maxBytes: client.config.maxDownloadBytes,
-            expectedBytes: t.size,
-          });
-          rows.push({
-            file: dl.fileName,
-            size: fmtBytes(dl.bytes),
-            type: dl.mimeType,
-            status: dl.cached ? 'already present' : 'downloaded',
-            path: dl.path,
-          });
-        } catch (err) {
-          rows.push({ file: t.fileName, status: `failed: ${(err as Error).message}` });
-        }
-      }
-
-      return text(`${rows.length} file(s).\n\n${table(rows)}`);
+      const saved = await saveBlackboardFile(client, args);
+      return text(JSON.stringify(saved, null, 2));
     }),
   );
 

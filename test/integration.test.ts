@@ -43,6 +43,10 @@ test('public MCP server handles discovery, denied writes, profile listing and sh
     assert.equal(localDenied.isError, true); assert.match(JSON.stringify(localDenied), /LOCAL_FILE_TOOL/);
     const batchDenied = await client.callTool({ name: 'lms_batch', arguments: { calls: [{ tool: 'canvas_download_file', args: {} }] } });
     assert.equal(batchDenied.isError, true); assert.match(JSON.stringify(batchDenied), /LOCAL_FILE_TOOL/);
+    const bbLocalDenied = await client.callTool({ name: 'lms_call', arguments: { tool: 'bb_download_file', args: {} } });
+    assert.equal(bbLocalDenied.isError, true); assert.match(JSON.stringify(bbLocalDenied), /LOCAL_FILE_TOOL/);
+    const bbBatchDenied = await client.callTool({ name: 'lms_batch', arguments: { calls: [{ tool: 'bb_download_file', args: {} }] } });
+    assert.equal(bbBatchDenied.isError, true); assert.match(JSON.stringify(bbBatchDenied), /LOCAL_FILE_TOOL/);
 
     assert(tools.some(t => t.name === 'lms_profile_add'));
     const search = await client.callTool({ name: 'lms_school_search', arguments: { query: '理大', offline: true } });
